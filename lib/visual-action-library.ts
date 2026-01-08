@@ -1,0 +1,442 @@
+import type { CanvasRenderingContext2D } from "canvas"
+import type { VisualActionType } from "./path-to-visual-action-type" // Declare or import VisualActionType
+
+export interface DrawingContext {
+  ctx: CanvasRenderingContext2D
+  from: { x: number; y: number }
+  to: { x: number; y: number }
+  opacity?: number
+}
+
+// Helper: Calculate distance between two points
+export const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2))
+
+// Helper: Calculate angle between two points
+export const angle = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.atan2(b.y - a.y, b.x - a.x)
+
+// Helper: Quadratic Bezier (used for curves)
+export const quadraticBezier = (t: number, p0: number, p1: number, p2: number) =>
+  (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+
+// Helper: Create control point for curved paths
+export const getControlPoint = (from: { x: number; y: number }, to: { x: number; y: number }, offset: number) => {
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }
+  const ang = angle(from, to)
+  const perpAng = ang + Math.PI / 2
+  return {
+    x: mid.x + offset * Math.cos(perpAng),
+    y: mid.y + offset * Math.sin(perpAng),
+  }
+}
+
+export function drawADVANCE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#2c3e50"
+  ctx.lineWidth = 4
+  ctx.fillStyle = "#2c3e50"
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+
+  // Arrowhead
+  drawArrowHead(ctx, to, ang, 20, "#2c3e50")
+  ctx.globalAlpha = 1
+}
+
+export function drawASSAULT({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#c0392b"
+  ctx.lineWidth = 5
+  ctx.fillStyle = "#c0392b"
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+
+  // Perpendicular "Limit of Advance" bar
+  const barLength = 30
+  const barX1 = to.x + barLength * Math.cos(ang + Math.PI / 2)
+  const barY1 = to.y + barLength * Math.sin(ang + Math.PI / 2)
+  const barX2 = to.x + barLength * Math.cos(ang - Math.PI / 2)
+  const barY2 = to.y + barLength * Math.sin(ang - Math.PI / 2)
+
+  ctx.beginPath()
+  ctx.moveTo(barX1, barY1)
+  ctx.lineTo(barX2, barY2)
+  ctx.stroke()
+
+  drawArrowHead(ctx, to, ang, 20, "#c0392b")
+  ctx.globalAlpha = 1
+}
+
+export function drawFLANK_LEFT({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const cp = getControlPoint(from, to, -120)
+  const ang = angle(cp, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#f39c12"
+  ctx.lineWidth = 4
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y)
+  ctx.stroke()
+
+  drawArrowHead(ctx, to, ang, 18, "#f39c12")
+  ctx.globalAlpha = 1
+}
+
+export function drawFLANK_RIGHT({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const cp = getControlPoint(from, to, 120)
+  const ang = angle(cp, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#f39c12"
+  ctx.lineWidth = 4
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y)
+  ctx.stroke()
+
+  drawArrowHead(ctx, to, ang, 18, "#f39c12")
+  ctx.globalAlpha = 1
+}
+
+export function drawENCIRCLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const cp1 = getControlPoint(from, to, -100)
+  const cp2 = getControlPoint(from, to, 100)
+  const ang1 = angle(cp1, to)
+  const ang2 = angle(cp2, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#8e44ad"
+  ctx.lineWidth = 4
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(cp1.x, cp1.y, to.x - 40, to.y - 40)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(cp2.x, cp2.y, to.x - 40, to.y + 40)
+  ctx.stroke()
+
+  drawArrowHead(ctx, { x: to.x - 40, y: to.y - 40 }, ang1, 16, "#8e44ad")
+  drawArrowHead(ctx, { x: to.x - 40, y: to.y + 40 }, ang2, 16, "#8e44ad")
+  ctx.globalAlpha = 1
+}
+
+export function drawBOMBARD({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity * 0.7 // Faded for support action
+  ctx.fillStyle = "#e74c3c"
+  ctx.strokeStyle = "#c0392b"
+  ctx.lineWidth = 2
+
+  // Scatter starburst icons over target
+  const burstCount = 8
+  const radius = 40
+  for (let i = 0; i < burstCount; i++) {
+    const ang = (i / burstCount) * Math.PI * 2
+    const x = to.x + radius * Math.cos(ang)
+    const y = to.y + radius * Math.sin(ang)
+    drawStarburst(ctx, x, y, 8)
+  }
+
+  ctx.globalAlpha = 1
+}
+
+export function drawSUPPRESS({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+  const dist = distance(from, to)
+  const step = dist / 8
+
+  ctx.globalAlpha = opacity * 0.6
+  ctx.fillStyle = "rgba(231, 76, 60, 0.5)"
+
+  // Cone of fire dots
+  for (let i = 0; i < 8; i++) {
+    const x = from.x + Math.cos(ang) * i * step
+    const y = from.y + Math.sin(ang) * i * step
+    const spreadDots = 3
+    for (let j = 0; j < spreadDots; j++) {
+      const spreadAng = ang + (j - 1) * 0.3
+      const dotX = x + 15 * Math.cos(spreadAng)
+      const dotY = y + 15 * Math.sin(spreadAng)
+      ctx.beginPath()
+      ctx.arc(dotX, dotY, 2, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  ctx.globalAlpha = 1
+}
+
+export function drawFORTIFY({ ctx, from, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#34495e"
+  ctx.lineWidth = 3
+
+  // Sawtooth fortification line in front of unit
+  const toothWidth = 15
+  const toothHeight = 15
+  const teethCount = 6
+
+  ctx.beginPath()
+  ctx.moveTo(from.x - (teethCount * toothWidth) / 2, from.y - 30)
+
+  for (let i = 0; i < teethCount; i++) {
+    const x = from.x - (teethCount * toothWidth) / 2 + i * toothWidth
+    ctx.lineTo(x + toothWidth / 2, from.y - 30 - toothHeight)
+    ctx.lineTo(x + toothWidth, from.y - 30)
+  }
+
+  ctx.stroke()
+  ctx.globalAlpha = 1
+}
+
+export function drawHOLD({ ctx, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#3498db"
+  ctx.lineWidth = 3
+
+  // Diamond around unit position
+  const size = 25
+  // Diamond is already implicitly in the unit counter rendering
+  ctx.globalAlpha = 1
+}
+
+export function drawAMBUSH({ ctx, from, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity * 0.8
+  ctx.fillStyle = "#16a085"
+  ctx.font = "bold 20px serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText("?", from.x, from.y)
+  ctx.globalAlpha = 1
+}
+
+export function drawRETREAT({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#95a5a6"
+  ctx.lineWidth = 4
+  ctx.setLineDash([6, 4])
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  drawArrowHead(ctx, to, ang, 16, "#95a5a6")
+  ctx.globalAlpha = 1
+}
+
+export function drawINFILTRATE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+  const dist = distance(from, to)
+  const step = dist / 4
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#27ae60"
+  ctx.lineWidth = 3
+  ctx.setLineDash([3, 3])
+
+  // Serpentine line
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+
+  for (let i = 1; i <= 4; i++) {
+    const x = from.x + Math.cos(ang) * i * step
+    const y = from.y + Math.sin(ang) * i * step
+    const sway = 15 * Math.sin((i / 4) * Math.PI * 2)
+    ctx.lineTo(x + sway, y)
+  }
+
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  drawArrowHead(ctx, to, ang, 16, "#27ae60")
+  ctx.globalAlpha = 1
+}
+
+// Helper function to draw arrowhead
+function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  to: { x: number; y: number },
+  ang: number,
+  len: number,
+  color: string,
+) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(to.x, to.y)
+  ctx.lineTo(to.x - len * Math.cos(ang - Math.PI / 6), to.y - len * Math.sin(ang - Math.PI / 6))
+  ctx.lineTo(to.x - len * Math.cos(ang + Math.PI / 6), to.y - len * Math.sin(ang + Math.PI / 6))
+  ctx.closePath()
+  ctx.fill()
+}
+
+// Helper function to draw starburst (for BOMBARD)
+function drawStarburst(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  ctx.beginPath()
+  const points = 8
+  for (let i = 0; i < points; i++) {
+    const ang = (i / points) * Math.PI * 2
+    const rx = i % 2 === 0 ? size : size / 2
+    const px = x + rx * Math.cos(ang)
+    const py = y + rx * Math.sin(ang)
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.stroke()
+  ctx.fill()
+}
+
+export function drawUnitStatus(
+  ctx: CanvasRenderingContext2D,
+  location: { x: number; y: number },
+  status: "fresh" | "engaged" | "wavering" | "routing",
+  size = 30,
+) {
+  const radius = size / 2 + 8
+
+  switch (status) {
+    case "fresh":
+      ctx.strokeStyle = "#27ae60"
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(location.x, location.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+      break
+
+    case "engaged":
+      ctx.strokeStyle = "#e67e22"
+      ctx.lineWidth = 2.5
+      // Pulsing effect simulated with dashes
+      ctx.setLineDash([2, 3])
+      ctx.beginPath()
+      ctx.arc(location.x, location.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.setLineDash([])
+      break
+
+    case "wavering":
+      ctx.strokeStyle = "#e74c3c"
+      ctx.lineWidth = 2
+      ctx.setLineDash([4, 2])
+      ctx.beginPath()
+      ctx.arc(location.x, location.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.setLineDash([])
+      break
+
+    case "routing":
+      ctx.globalAlpha = 0.5
+      ctx.fillStyle = "#95a5a6"
+      ctx.beginPath()
+      ctx.arc(location.x, location.y, size / 2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      // Motion blur effect
+      ctx.strokeStyle = "rgba(149, 165, 166, 0.3)"
+      ctx.lineWidth = 2
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath()
+        ctx.arc(location.x + i * 8, location.y, size / 2 - i * 2, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      break
+  }
+}
+
+export function drawThreatZone(ctx: CanvasRenderingContext2D, location: { x: number; y: number }, range = 80) {
+  ctx.strokeStyle = "rgba(231, 76, 60, 0.2)"
+  ctx.lineWidth = 1
+  ctx.setLineDash([4, 4])
+  ctx.beginPath()
+  ctx.arc(location.x, location.y, range, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
+export function drawFrontline(
+  ctx: CanvasRenderingContext2D,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.strokeStyle = "#c0392b"
+  ctx.lineWidth = 3
+  ctx.setLineDash([6, 4])
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
+export function drawFogOfIntent(
+  ctx: CanvasRenderingContext2D,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  isReal = false,
+) {
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = isReal ? 0.7 : 0.3
+  ctx.strokeStyle = isReal ? "#3498db" : "#95a5a6"
+  ctx.lineWidth = 3
+  ctx.setLineDash([8, 4])
+
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+
+  drawArrowHead(ctx, to, ang, 16, isReal ? "#3498db" : "#95a5a6")
+  ctx.globalAlpha = 1
+  ctx.setLineDash([])
+}
+
+export function renderVisualAction(action: VisualActionType, context: DrawingContext) {
+  const renderers: Record<VisualActionType, (ctx: DrawingContext) => void> = {
+    ADVANCE: drawADVANCE,
+    ASSAULT: drawASSAULT,
+    FLANK_LEFT: drawFLANK_LEFT,
+    FLANK_RIGHT: drawFLANK_RIGHT,
+    RETREAT: drawRETREAT,
+    INFILTRATE: drawINFILTRATE,
+    ENCIRCLE: drawENCIRCLE,
+    SPEARHEAD: drawADVANCE, // Heavy version of advance
+    FORTIFY: drawFORTIFY,
+    BLOCKADE: drawAMBUSH, // Visual similarity
+    HOLD: drawHOLD,
+    AMBUSH: drawAMBUSH,
+    BOMBARD: drawBOMBARD,
+    SUPPRESS: drawSUPPRESS,
+    SEVER_SUPPLY: drawAMBUSH, // Scissors icon
+    FEINT: drawRETREAT, // Phantom arrow
+  }
+
+  const renderer = renderers[action]
+  if (renderer) {
+    renderer(context)
+  }
+}
