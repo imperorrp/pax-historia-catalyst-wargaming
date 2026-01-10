@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import type { CatalystOption, WarRoomScenario, AIGameResponse } from "./types"
 import { SCENARIOS } from "./mock-scenario"
+import { hydrateScenarioLayout } from "./grid-engine/layout-solver"
 
 export type TargetingState = "idle" | "tactic_selected"
 
@@ -33,6 +34,7 @@ interface TargetingStore {
   incrementRound: () => void
   toggleLayer: (layer: keyof TargetingStore["visibleLayers"]) => void
   setScenario: (scenario: WarRoomScenario) => void
+  updateScenarioLayout: (scenario: WarRoomScenario) => void
   setGameResponse: (response: AIGameResponse | null) => void
   setAnimating: (animating: boolean) => void
   goToPreviousRound: () => void
@@ -41,11 +43,14 @@ interface TargetingStore {
   saveToHistory: (scenario: WarRoomScenario, narrative: string, tactic: CatalystOption | null) => void
 }
 
+// Hydrate initial scenario once
+const initialScenario = hydrateScenarioLayout(SCENARIOS.ww2_blitzkrieg);
+
 export const useTargetingStore = create<TargetingStore>((set, get) => ({
   state: "idle",
   selectedTactic: null,
   currentRound: 1,
-  currentScenario: SCENARIOS.ww2_blitzkrieg,
+  currentScenario: initialScenario,
   visibleLayers: {
     grid: true,
     units: true,
@@ -54,7 +59,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   },
   gameResponse: null,
   isAnimating: false,
-  history: [{ round: 1, scenario: SCENARIOS.ww2_blitzkrieg, narrative: "Initial deployment", tacticUsed: null }],
+  history: [{ round: 1, scenario: initialScenario, narrative: "Initial deployment", tacticUsed: null }],
   historyIndex: 0,
 
   selectTactic: (tactic) =>
@@ -79,15 +84,23 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
       },
     }),
 
-  setScenario: (scenario) =>
+  setScenario: (scenario) => {
+    // Hydrate scenario if it doesn't have hexGrid yet
+    const hydratedScenario = scenario.hexGrid ? scenario : hydrateScenarioLayout(scenario);
     set({
-      currentScenario: scenario,
+      currentScenario: hydratedScenario,
       currentRound: 1,
       selectedTactic: null,
       state: "idle",
-      history: [{ round: 1, scenario, narrative: "Initial deployment", tacticUsed: null }],
+      history: [{ round: 1, scenario: hydratedScenario, narrative: "Initial deployment", tacticUsed: null }],
       historyIndex: 0,
-    }),
+    });
+  },
+
+  updateScenarioLayout: (scenario) => {
+    // Update scenario geometry without resetting game state
+    set({ currentScenario: scenario })
+  },
 
   setGameResponse: (response) => set({ gameResponse: response }),
 

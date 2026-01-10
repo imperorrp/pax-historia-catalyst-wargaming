@@ -21,14 +21,11 @@ export interface TacticalMesh {
 }
 
 export type AnchorType = 'centroid' | 'border' | 'sector' | 'feature';
+export type PositionTag = 'center' | 'front_line' | 'rear_guard' | 'flank_left' | 'flank_right';
 
-// The AI doesn't give coords, it gives this:
-export interface SemanticPosition {
+export interface SemanticPlacement {
   regionId: string;
-  type: AnchorType;
-  targetId?: string; // e.g., 'border_germany' or 'river_rhine'
-  offset?: number;   // 0.0 to 1.0 (progress along a border/line)
-  jitter?: number;   // Randomness radius
+  tag: PositionTag;
 }
 
 export interface Unit {
@@ -37,22 +34,15 @@ export interface Unit {
   type: "armor" | "infantry" | "cavalry" | "artillery"
   owner: "player" | "enemy"
   
-  // Hex Coordinates
-  q?: number;
-  r?: number;
-
-  // The rendered pixel location (calculated by frontend)
-  location: { x: number, y: number }; 
+  // The calculated "Truth" location (Axial) - populated by Hydrator
+  hex?: { q: number, r: number };
   
-  // Legacy: The node the unit is currently occupying
-  nodeId?: string;
-
-  // The logical location (stored in DB/used by AI)
-  semanticPos?: SemanticPosition; 
+  // The User/AI intent
+  placement?: SemanticPlacement; 
   
   tags: string[]
-  visibility?: number // 0-100, for fog of war
-  status?: "fresh" | "engaged" | "wavering" | "routing" // New: unit morale/cohesion state
+  visibility?: number
+  status?: "fresh" | "engaged" | "wavering" | "routing"
 }
 
 export interface CatalystOption {
@@ -78,7 +68,7 @@ export interface MapRegion {
 export interface MapFeature {
   id: string;
   type: 'river' | 'fort' | 'city' | 'forest';
-  location: SemanticPosition; // Where is this feature located?
+  location: SemanticPlacement; // Where is this feature located?
 }
 
 export type VisualActionType =
@@ -143,6 +133,8 @@ export interface WarRoomScenario {
     height: number
   }
   hexGrid?: HexData[];
+  // Optional lookup map for fast hex->pixel access keyed by "q,r"
+  hexIndex?: Record<string, HexData>;
 }
 
 export interface HexData {
@@ -169,7 +161,7 @@ export interface StateChange {
   unit_id: string
   action: "MOVE" | "UPDATE_STATUS" | "REMOVE"
   to_region?: string
-  semantic_update?: SemanticPosition;
+  semantic_update?: SemanticPlacement;
   new_tags?: string[]
   new_location?: Location
 }

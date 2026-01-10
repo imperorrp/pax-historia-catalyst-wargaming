@@ -6,7 +6,8 @@ import type { WarRoomScenario, HexData } from "@/lib/types"
 import { UnitCounter } from "./unit-counter"
 
 import { renderVisualAction, drawUnitStatus, drawThreatZone } from "@/lib/visual-action-library"
-import { HexGridManager } from "@/lib/hex-grid-manager"
+import { hydrateScenarioLayout } from "@/lib/grid-engine/layout-solver"
+import { getHexCorners, hexToPixel } from "@/lib/grid-engine/hex-math"
 import { Grid3X3 } from "lucide-react"
 import rough from "roughjs"
 
@@ -18,41 +19,50 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isRendered, setIsRendered] = useState(false)
-  const { selectedTactic, visibleLayers, setScenario } = useTargetingStore()
+  const { selectedTactic, visibleLayers, setScenario, updateScenarioLayout } = useTargetingStore()
   const [showLayerPanel, setShowLayerPanel] = useState(false)
 
-  // Initialization: Generate Hex Grid if missing
+  // Hydration: measure container and hydrate scenario to actual pixel dims
   useEffect(() => {
-    if (!scenario.hexGrid && scenario.mapRegions.length > 0) {
-      console.log("Generating Hex Grid...", scenario.id);
-      const hexGrid = HexGridManager.generateHexGrid(
-         scenario.mapRegions, 
-         scenario.mapDimensions.width, 
-         scenario.mapDimensions.height,
-         30 // Hex Radius
-      );
+    const el = containerRef.current;
+    if (!el) return;
+
+    const measureAndMaybeHydrate = () => {
+      const rect = el.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+
+      // Only re-hydrate if dimensions have changed significantly (>2px) to avoid rounding jitter
+      // or if grid is missing
+      const dimMismatch = Math.abs(scenario.mapDimensions.width - width) > 2 || 
+                          Math.abs(scenario.mapDimensions.height - height) > 2;
+
+      const needsHydrate = !scenario.hexGrid || dimMismatch;
       
-      // Phase 2: Paint Terrain (Updated geometry awareness)
-      hexGrid.forEach(hex => {
-         // Forest in the Ardennes / Vosges (Top/Bottom)
-         if (hex.regionId === 'region-2' && hex.y < 150) hex.terrain = 'forest';
-         if (hex.regionId === 'region-1' && hex.y > 450) hex.terrain = 'forest';
+      if (needsHydrate && width > 0 && height > 0) {
+        console.log("[hydrate] Re-hydrating scenario:", scenario.id, "with", width, "x", height);
+        const hydrated = hydrateScenarioLayout(scenario, width, height);
+        updateScenarioLayout(hydrated);
+      }
+    };
 
-         // Urban centers in Alsace (Strasbourg)
-         if (hex.regionId === 'region-1' && hex.x > 600 && hex.x < 750 && hex.y > 200 && hex.y < 350) {
-            hex.terrain = 'urban_ruins';
-         }
+    // Initial measure
+    measureAndMaybeHydrate();
 
-         // River Crossings (Near the border x~400)
-         if (Math.abs(hex.x - 400) < 40) hex.terrain = 'swamp'; 
-      });
+    // Observe resize and re-hydrate if size changes
+    const ro = new ResizeObserver(() => measureAndMaybeHydrate());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scenario.id, containerRef.current, scenario.hexGrid, scenario.mapDimensions, updateScenarioLayout]);
 
-      setScenario({ ...scenario, hexGrid });
-    }
-  }, [scenario.id, scenario.mapRegions, scenario.hexGrid, scenario.mapDimensions, setScenario]);
-
+  // Render canvas when scenario or visibility changes
   useEffect(() => {
-    if (!canvasRef.current) return
+    // Only render if we have a hexGrid (should be hydrated by store)
+    if (!canvasRef.current || !scenario.hexGrid) {
+      console.warn("Scenario not hydrated yet");
+      return;
+    }
+
 
     const canvas = canvasRef.current
     canvas.width = scenario.mapDimensions.width
@@ -123,42 +133,44 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
     // 3. Render Hex Grid
     if (visibleLayers.grid && scenario.hexGrid) {
-      const hexRadius = 30;
-      
       scenario.hexGrid.forEach(hex => {
-         const corners: [number, number][] = [];
-         for (let i = 0; i < 6; i++) {
-            const angle_deg = 60 * i + 30;
-            const angle_rad = Math.PI / 180 * angle_deg;
-            corners.push([
-               hex.x + hexRadius * Math.cos(angle_rad),
-               hex.y + hexRadius * Math.sin(angle_rad)
-            ]);
-         }
+         // Use the single source of truth for geometry
+         const cornersObj = getHexCorners({ x: hex.x, y: hex.y });
+         const corners = cornersObj.map(p => [p.x, p.y] as [number, number]);
          
          // Style based on Phase 2 Layer System
          let fill = "rgba(255, 255, 255, 0.0)";
          let fillStyle = "solid";
          let stroke = "rgba(0,0,0,0.06)";
+         let strokeWidth = 0.5;
          
-         if (hex.terrain === 'forest') {
+         if (hex.structure === 'fortress') {
+            fill = "rgba(100, 100, 100, 0.4)";
+            fillStyle = "solid";
+            stroke = "rgba(50, 50, 50, 0.8)";
+            strokeWidth = 2;
+         } else if (hex.structure === 'city_block' || hex.terrain === 'urban_ruins' || hex.terrain === 'urban') {
+            fill = "rgba(44, 62, 80, 0.3)";
+            fillStyle = "cross-hatch";
+            stroke = "rgba(44, 62, 80, 0.4)";
+         } else if (hex.terrain === 'forest') {
             fill = "rgba(34, 139, 34, 0.15)";
             fillStyle = "hachure";
             stroke = "rgba(34, 139, 34, 0.3)";
-         } else if (hex.terrain === 'urban_ruins') {
-            fill = "rgba(44, 62, 80, 0.25)";
-            fillStyle = "cross-hatch";
-            stroke = "rgba(44, 62, 80, 0.4)";
          } else if (hex.terrain === 'swamp') {
             fill = "rgba(46, 204, 113, 0.1)";
             fillStyle = "dashed";
+         } else if (hex.terrain === 'river') {
+            fill = "rgba(52, 152, 219, 0.3)";
+            fillStyle = "zigzag";
+            stroke = "rgba(52, 152, 219, 0.5)";
          }
 
          rc.polygon(corners, {
             fill: fill,
             fillStyle: fillStyle,
             stroke: stroke,
-            strokeWidth: 0.5,
+            strokeWidth: strokeWidth,
             roughness: 0.5
          });
       });
@@ -167,11 +179,21 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     // 4. Render Unit Status Rings
     if (visibleLayers.units) {
       scenario.units.forEach((unit) => {
-        let loc = unit.location;
-        if (unit.q !== undefined && unit.r !== undefined && scenario.hexGrid) {
-          const hex = scenario.hexGrid.find(h => h.q === unit.q && h.r === unit.r);
-          if (hex) loc = { x: hex.x, y: hex.y };
+        // Skip units without hex coordinates
+        if (!unit.hex) {
+          console.warn(`Unit ${unit.id} has no hex coordinates, skipping canvas render`);
+          return;
         }
+        
+        // Look up hex in hexIndex/hexGrid to get actual pixel position
+        const hexKey = `${unit.hex!.q},${unit.hex!.r}`;
+        const hexData = scenario.hexIndex?.[hexKey] ?? scenario.hexGrid?.find(h => h.q === unit.hex!.q && h.r === unit.hex!.r);
+        if (!hexData) {
+          console.warn(`Unit ${unit.id} hex not found in hexGrid`);
+          return;
+        }
+        
+        const loc = { x: hexData.x, y: hexData.y };
         
         if (unit.status) {
           drawUnitStatus(ctx, loc, unit.status, 32);
@@ -186,24 +208,23 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
       if (playerUnits.length > 0 && enemyUnits.length > 0) {
         playerUnits.forEach((playerUnit) => {
-          // Determine position (prioritize hex)
-          let fromLoc = playerUnit.location;
-          if (playerUnit.q !== undefined && playerUnit.r !== undefined && scenario.hexGrid) {
-            const hex = scenario.hexGrid.find(h => h.q === playerUnit.q && h.r === playerUnit.r);
-            if (hex) fromLoc = { x: hex.x, y: hex.y };
-          }
+          // Look up player unit position in hexGrid
+          if (!playerUnit.hex) return;
+          const pKey = `${playerUnit.hex.q},${playerUnit.hex.r}`;
+          const playerHexData = scenario.hexIndex?.[pKey] ?? scenario.hexGrid?.find(h => h.q === playerUnit.hex!.q && h.r === playerUnit.hex!.r);
+          if (!playerHexData) return;
+          const fromLoc = { x: playerHexData.x, y: playerHexData.y };
 
-          // Find nearest enemy unit instead of drawing to all
+          // Find nearest enemy unit
           let nearestEnemy = null;
           let minDist = Infinity;
           
           enemyUnits.forEach((enemyUnit) => {
-            let enemyLoc = enemyUnit.location;
-            if (enemyUnit.q !== undefined && enemyUnit.r !== undefined && scenario.hexGrid) {
-              const hex = scenario.hexGrid.find(h => h.q === enemyUnit.q && h.r === enemyUnit.r);
-              if (hex) enemyLoc = { x: hex.x, y: hex.y };
-            }
-            
+            if (!enemyUnit.hex) return;
+            const eKey = `${enemyUnit.hex.q},${enemyUnit.hex.r}`;
+            const enemyHexData = scenario.hexIndex?.[eKey] ?? scenario.hexGrid?.find(h => h.q === enemyUnit.hex!.q && h.r === enemyUnit.hex!.r);
+            if (!enemyHexData) return;
+            const enemyLoc = { x: enemyHexData.x, y: enemyHexData.y };            
             const dx = enemyLoc.x - fromLoc.x;
             const dy = enemyLoc.y - fromLoc.y;
             const dist = dx*dx + dy*dy;
@@ -235,12 +256,10 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         // Resolve effect location
         if (fx.target_unit) {
           const targetUnit = scenario.units.find(u => u.id === fx.target_unit);
-          if (targetUnit) {
-            fxLoc = targetUnit.location;
-            if (targetUnit.q !== undefined && targetUnit.r !== undefined && scenario.hexGrid) {
-              const hex = scenario.hexGrid.find(h => h.q === targetUnit.q && h.r === targetUnit.r);
-              if (hex) fxLoc = { x: hex.x, y: hex.y };
-            }
+          if (targetUnit?.hex) {
+            const key = `${targetUnit.hex.q},${targetUnit.hex.r}`;
+            const hexData = scenario.hexIndex?.[key] ?? scenario.hexGrid?.find(h => h.q === targetUnit.hex!.q && h.r === targetUnit.hex!.r);
+            if (hexData) fxLoc = { x: hexData.x, y: hexData.y };
           }
         } else if (fx.region) {
           const region = scenario.mapRegions.find(r => r.id === fx.region);
@@ -340,7 +359,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
 
     setIsRendered(true)
-  }, [scenario, selectedTactic, visibleLayers])
+  }, [scenario.id, scenario.hexGrid, selectedTactic, visibleLayers]) // Fixed dep array to prevent rerenders
 
   return (
     <motion.div

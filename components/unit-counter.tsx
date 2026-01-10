@@ -4,7 +4,8 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { useTargetingStore } from "@/lib/targeting-store"
 import type { Unit } from "@/lib/types"
-import { resolveSemanticPosition } from "@/lib/geometry-utils"
+import { hexToPixel } from "@/lib/grid-engine/hex-math"
+// import { resolveSemanticPosition } from "@/lib/geometry-utils" // Deprecated for Hex
 
 interface UnitCounterProps {
   unit: Unit
@@ -13,10 +14,27 @@ interface UnitCounterProps {
 export function UnitCounter({ unit }: UnitCounterProps) {
   const [isHovered, setIsHovered] = useState(false)
   const { state, selectedTactic, selectedUnit, currentScenario } = useTargetingStore()
-  const regions = currentScenario.mapRegions
-  const mesh = currentScenario.tacticalMesh
 
   const isPlayer = unit.owner === "player"
+
+  // Calculate display position from hex coordinates
+  // IMPORTANT: Look up the hex in the scenario's hexGrid to get the actual pixel position
+  let displayPos = { x: 50, y: 50 }; // Fallback
+
+  if (unit.hex && currentScenario.hexGrid) {
+    const key = `${unit.hex.q},${unit.hex.r}`;
+    const hexData = currentScenario.hexIndex?.[key] ?? currentScenario.hexGrid.find(h => h.q === unit.hex!.q && h.r === unit.hex!.r);
+    if (hexData) {
+      displayPos = { x: hexData.x, y: hexData.y };
+    } else {
+      console.warn(`Unit ${unit.id} hex (${unit.hex.q}, ${unit.hex.r}) not found in hexGrid`);
+    }
+  } else if (!unit.hex) {
+    console.warn(`Unit ${unit.id} missing hex coordinates`);
+  }
+
+  const finalX = displayPos.x;
+  const finalY = displayPos.y;
 
   const isValidTarget =
     state === "tactic_selected" &&
@@ -42,36 +60,10 @@ export function UnitCounter({ unit }: UnitCounterProps) {
     }
   }
 
-  // Unit Placement Logic: Hex > Mesh > Location > Semantic
-  let loc = { x: 0, y: 0 }
-  
-  if (unit.q !== undefined && unit.r !== undefined && currentScenario.hexGrid) {
-    // Hex Lookup
-    const hex = currentScenario.hexGrid.find(h => h.q === unit.q && h.r === unit.r)
-    if (hex) {
-       loc = { x: hex.x, y: hex.y }
-    } else {
-       // Fallback if hex not found (e.g. out of bounds)
-       // Calculate manually? (Assume pointy top radius 30)
-       const hexRadius = 30;
-       loc = {
-         x: (hexRadius * Math.sqrt(3) * (unit.q + unit.r / 2)),
-         y: (hexRadius * 3 / 2 * unit.r)
-       }
-    }
-  } else if (unit.nodeId && mesh) {
-    const node = mesh.nodes.find(n => n.id === unit.nodeId)
-    if (node) loc = { x: node.x, y: node.y }
-  } else if (unit.location) {
-    loc = unit.location
-  } else if (unit.semanticPos) {
-    loc = resolveSemanticPosition(unit.semanticPos, regions)
-  }
-
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity, left: loc.x, top: loc.y }}
+      animate={{ scale: 1, opacity, left: finalX, top: finalY }}
       transition={{ duration: 0.4, type: "spring" }}
       className="absolute"
       style={{

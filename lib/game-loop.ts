@@ -16,22 +16,7 @@ export function createGameLoopContext(scenario: WarRoomScenario, round: number, 
 }
 
 export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGameResponse): WarRoomScenario {
-  // 1. Identify occupied positions from units that are NOT moving or being removed
-  // This allows moving units to take spots vacated by others, while avoiding collisions with stationary/already-moved units.
-  const occupiedLocations: Location[] = [];
-  
-  scenario.units.forEach(unit => {
-    const change = response.state_changes.find(c => c.unit_id === unit.id);
-    // If no change, or change is just status update, it stays put. 
-    // If action is MOVE or REMOVE, it leaves its current spot.
-    const isMovingOrRemoved = change && (change.action === 'MOVE' || change.action === 'REMOVE');
-    
-    if (!isMovingOrRemoved) {
-      occupiedLocations.push(unit.location);
-    }
-  });
-
-  // 2. Process all units
+  // Process all units and apply state changes
   const updatedUnits = scenario.units.map((unit) => {
     const change = response.state_changes.find((c) => c.unit_id === unit.id)
     
@@ -43,92 +28,32 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
       return null as any
     }
 
-    // Case 3: Move (Semantic)
+    // Case 3: Move with semantic update
     if (change.action === "MOVE" && change.semantic_update) {
-      // Pass the CURRENT list of occupied locations (including stationary units + any already processed movers)
-      // Note: Since we use .map, 'occupiedLocations' currently only has stationary units.
-      // Ideally we should process serially if we want unit A to avoid unit B's *new* location if A comes after B in the list.
-      // But standard .map is fine if we accept that "later" units avoid "earlier" units only if we push to array.
-      // To disable self-collision for the moment of calculation? No, the unit is moving *to* a new spot.
-      
-      const newXY = resolveSemanticPosition(
-        change.semantic_update, 
-        scenario.mapRegions,
-        occupiedLocations, // Pass the collision mask
-        undefined // Pass undefined instead of non-existent tacticalMesh
-      )
-
-      // SNAP TO HEX (New Logic)
-      let newQ = unit.q;
-      let newR = unit.r;
-      let finalLocation = newXY;
-
-      if (scenario.hexGrid) {
-        // Find nearest hex to the resolved Euclidean point
-        // Simple distance check against all hexes (O(N) but N is small ~300)
-        let nearestHex: any = null;
-        let minDist = Infinity;
-        const MAX_SNAP_DISTANCE = 150; // Don't snap to hexes more than 150px away
-        
-        for (const hex of scenario.hexGrid) {
-          // Validate hex is within map bounds
-          if (hex.x < 0 || hex.x > scenario.mapDimensions.width || 
-              hex.y < 0 || hex.y > scenario.mapDimensions.height) {
-            continue; // Skip out-of-bounds hexes
-          }
-          
-          const dx = hex.x - newXY.x;
-          const dy = hex.y - newXY.y;
-          const dist = dx*dx + dy*dy;
-          
-          if (dist < minDist && dist < MAX_SNAP_DISTANCE * MAX_SNAP_DISTANCE) {
-             minDist = dist;
-             nearestHex = hex;
-          }
-        }
-        
-        if (nearestHex) {
-           newQ = nearestHex.q;
-           newR = nearestHex.r;
-           finalLocation = { x: nearestHex.x, y: nearestHex.y }; // Sync location to hex center
-        }
+      // Find target hex using the semantic placement
+      if (!scenario.hexGrid) {
+        console.warn("No hexGrid available for movement");
+        return unit;
       }
 
-      // Mark this new spot as taken for subsequent units in this very loop?
-      // map() function runs synchronously, so if we push to occupiedLocations HERE, 
-      // the next iteration of map() will see it.
-      occupiedLocations.push(finalLocation);
+      const targetRegionHexes = scenario.hexGrid.filter(h => h.regionId === change.semantic_update!.regionId);
+      if (targetRegionHexes.length === 0) {
+        console.warn(`No hexes found for region ${change.semantic_update!.regionId}`);
+        return unit;
+      }
 
+      // Use simple center placement for the target region
+      const centerHex = targetRegionHexes[Math.floor(targetRegionHexes.length / 2)];
+      
       return {
         ...unit,
-        location: finalLocation,
-        q: newQ, // update hex coord
-        r: newR, // update hex coord
-        semanticPos: change.semantic_update,
+        hex: { q: centerHex.q, r: centerHex.r }, // Use hex object, not standalone q/r
+        placement: change.semantic_update,
         tags: change.new_tags || unit.tags,
       }
     }
 
-    // Case 4: Move (Legacy/Fallback)
-    if (change.action === "MOVE" && change.to_region) {
-      const targetRegion = scenario.mapRegions.find((r) => r.id === change.to_region)
-      if (targetRegion) {
-        // Fallback: Just center (not collision checked currently as it's legacy)
-        const centerX = targetRegion.points.reduce((sum, p) => sum + p[0], 0) / targetRegion.points.length
-        const centerY = targetRegion.points.reduce((sum, p) => sum + p[1], 0) / targetRegion.points.length
-        
-        const newLoc = { x: centerX, y: centerY };
-        occupiedLocations.push(newLoc);
-
-        return {
-          ...unit,
-          location: newLoc,
-          tags: change.new_tags || unit.tags,
-        }
-      }
-    }
-
-    // Case 5: Status Update
+    // Case 4: Status update only
     if (change.action === "UPDATE_STATUS") {
       return {
         ...unit,
@@ -136,6 +61,7 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
       }
     }
 
+    // Default: return unchanged
     return unit
   })
 

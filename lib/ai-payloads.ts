@@ -10,10 +10,8 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
         unit_id: "u1",
         action: "MOVE",
         semantic_update: {
-          regionId: "region-1", // Push into Alsace
-          type: "border",
-          targetId: "region-2",
-          offset: 0.3
+          regionId: "region-1",
+          tag: "front_line"
         },
         new_tags: ["Armor", "Advancing", "Breakthrough"],
       },
@@ -22,9 +20,7 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
         action: "MOVE",
         semantic_update: {
           regionId: "region-2",
-          type: "border",
-          targetId: "region-1",
-          offset: 0.5
+          tag: "front_line"
         },
         new_tags: ["Infantry", "Following", "Support"],
       },
@@ -33,8 +29,7 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
         action: "MOVE",
         semantic_update: {
           regionId: "region-1",
-          type: "sector",
-          targetId: "south_east", // Retreat deeper into Alsace
+          tag: "rear_guard"
         },
         new_tags: ["Infantry", "Retreating", "Low Morale"],
       },
@@ -128,7 +123,7 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
         action: "MOVE",
         semantic_update: {
           regionId: "nord-1",
-          type: "centroid"
+          tag: "center"
         },
         new_tags: ["Infantry", "Fresh", "Victorious"],
       },
@@ -136,9 +131,8 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
         unit_id: "n_e1",
         action: "MOVE",
         semantic_update: {
-          regionId: "nord-1", 
-          type: "sector",
-          targetId: "east"
+          regionId: "nord-1",
+          tag: "flank_right"
         },
         new_tags: ["Infantry", "Broken", "Routing"],
       },
@@ -179,7 +173,7 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
         action: "MOVE",
         semantic_update: {
           regionId: "med-1",
-          type: "centroid"
+          tag: "center"
         },
         new_tags: ["Mixed", "Fresh", "Victorious"],
       },
