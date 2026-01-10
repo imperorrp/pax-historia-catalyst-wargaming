@@ -3,12 +3,53 @@ export interface Location {
   y: number
 }
 
+// Phase 1: Mesh System
+export interface TacticalNode {
+  id: string; // e.g. "region-1-node-45"
+  x: number;
+  y: number;
+  neighbors: string[]; // IDs of connected nodes
+  terrain: 'plains' | 'forest' | 'urban' | 'water' | 'mountain';
+  isBorder: boolean;
+  regionId: string; // Which region generated this node?
+}
+
+// The mesh for the entire map
+export interface TacticalMesh {
+  nodes: TacticalNode[];
+  edges: [TacticalNode, TacticalNode][]; // For rendering lines
+}
+
+export type AnchorType = 'centroid' | 'border' | 'sector' | 'feature';
+
+// The AI doesn't give coords, it gives this:
+export interface SemanticPosition {
+  regionId: string;
+  type: AnchorType;
+  targetId?: string; // e.g., 'border_germany' or 'river_rhine'
+  offset?: number;   // 0.0 to 1.0 (progress along a border/line)
+  jitter?: number;   // Randomness radius
+}
+
 export interface Unit {
   id: string
   name: string
   type: "armor" | "infantry" | "cavalry" | "artillery"
   owner: "player" | "enemy"
-  location: Location
+  
+  // Hex Coordinates
+  q?: number;
+  r?: number;
+
+  // The rendered pixel location (calculated by frontend)
+  location: { x: number, y: number }; 
+  
+  // Legacy: The node the unit is currently occupying
+  nodeId?: string;
+
+  // The logical location (stored in DB/used by AI)
+  semanticPos?: SemanticPosition; 
+  
   tags: string[]
   visibility?: number // 0-100, for fog of war
   status?: "fresh" | "engaged" | "wavering" | "routing" // New: unit morale/cohesion state
@@ -26,9 +67,18 @@ export interface MapRegion {
   id: string
   name: string
   points: [number, number][]
+  neighbors: string[]; // IDs of adjacent regions
+  features?: MapFeature[];
   terrain?: "plains" | "forest" | "mountain" | "urban" | "river"
   isFort?: boolean
   isCity?: boolean
+  gridScale?: number // New: Grid density for this region (e.g. 10)
+}
+
+export interface MapFeature {
+  id: string;
+  type: 'river' | 'fort' | 'city' | 'forest';
+  location: SemanticPosition; // Where is this feature located?
 }
 
 export type VisualActionType =
@@ -92,6 +142,20 @@ export interface WarRoomScenario {
     width: number
     height: number
   }
+  hexGrid?: HexData[];
+}
+
+export interface HexData {
+  q: number;
+  r: number;
+  s: number;
+  x: number;
+  y: number;
+  terrain: 'plains' | 'mud' | 'sand' | 'water' | 'mountain' | 'forest' | 'urban_ruins' | 'factory_floor' | 'swamp';
+  structure?: 'fortress' | 'bunker' | 'city_block' | 'airfield' | 'rubble' | 'none';
+  infrastructure?: ('road' | 'river' | 'wall')[];
+  height?: number;
+  regionId: string;
 }
 
 export interface AIGameResponse {
@@ -105,6 +169,7 @@ export interface StateChange {
   unit_id: string
   action: "MOVE" | "UPDATE_STATUS" | "REMOVE"
   to_region?: string
+  semantic_update?: SemanticPosition;
   new_tags?: string[]
   new_location?: Location
 }

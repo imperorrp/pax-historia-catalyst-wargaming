@@ -2,9 +2,13 @@
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { useTargetingStore } from "@/lib/targeting-store"
-import type { WarRoomScenario } from "@/lib/types"
+import type { WarRoomScenario, HexData } from "@/lib/types"
+import { UnitCounter } from "./unit-counter"
+
 import { renderVisualAction, drawUnitStatus, drawThreatZone } from "@/lib/visual-action-library"
+import { HexGridManager } from "@/lib/hex-grid-manager"
 import { Grid3X3 } from "lucide-react"
+import rough from "roughjs"
 
 interface WarRoomMapProps {
   scenario: WarRoomScenario
@@ -14,8 +18,38 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isRendered, setIsRendered] = useState(false)
-  const { selectedTactic, visibleLayers } = useTargetingStore()
+  const { selectedTactic, visibleLayers, setScenario } = useTargetingStore()
   const [showLayerPanel, setShowLayerPanel] = useState(false)
+
+  // Initialization: Generate Hex Grid if missing
+  useEffect(() => {
+    if (!scenario.hexGrid && scenario.mapRegions.length > 0) {
+      console.log("Generating Hex Grid...", scenario.id);
+      const hexGrid = HexGridManager.generateHexGrid(
+         scenario.mapRegions, 
+         scenario.mapDimensions.width, 
+         scenario.mapDimensions.height,
+         30 // Hex Radius
+      );
+      
+      // Phase 2: Paint Terrain (Updated geometry awareness)
+      hexGrid.forEach(hex => {
+         // Forest in the Ardennes / Vosges (Top/Bottom)
+         if (hex.regionId === 'region-2' && hex.y < 150) hex.terrain = 'forest';
+         if (hex.regionId === 'region-1' && hex.y > 450) hex.terrain = 'forest';
+
+         // Urban centers in Alsace (Strasbourg)
+         if (hex.regionId === 'region-1' && hex.x > 600 && hex.x < 750 && hex.y > 200 && hex.y < 350) {
+            hex.terrain = 'urban_ruins';
+         }
+
+         // River Crossings (Near the border x~400)
+         if (Math.abs(hex.x - 400) < 40) hex.terrain = 'swamp'; 
+      });
+
+      setScenario({ ...scenario, hexGrid });
+    }
+  }, [scenario.id, scenario.mapRegions, scenario.hexGrid, scenario.mapDimensions, setScenario]);
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -26,10 +60,14 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
     const ctx = canvas.getContext("2d")
     if (!ctx) return
+    
+    // RoughJS instance
+    const rc = rough.canvas(canvas);
 
     ctx.fillStyle = "#F3E5AB"
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-
+    
+    // ... noise generation ... (simplifying for edit)
     const imageData = ctx.createImageData(canvas.width, canvas.height)
     const data = imageData.data
     for (let i = 0; i < data.length; i += 4) {
@@ -37,165 +75,272 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       data[i] += noise
       data[i + 1] += noise * 0.8
       data[i + 2] += noise * 0.6
-      data[i + 3] = 255
+      data[i + 3] = 40 
     }
     ctx.putImageData(imageData, 0, 0)
 
-    if (visibleLayers.grid) {
-      ctx.strokeStyle = "rgba(44, 62, 80, 0.05)"
-      ctx.lineWidth = 1
-      const gridSize = 50
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(canvas.width, y)
-        ctx.stroke()
-      }
-    }
-
+    // 2. Render Regions
     if (visibleLayers.regions) {
       scenario.mapRegions.forEach((region) => {
-        const isEnemyRegion = Math.random() > 0.6
+        // Fill
+        ctx.beginPath();
+        ctx.moveTo(region.points[0][0], region.points[0][1]);
+        for(let i=1; i<region.points.length; i++) ctx.lineTo(region.points[i][0], region.points[i][1]);
+        ctx.closePath();
+        
+        ctx.fillStyle = region.id === 'region-1' 
+          ? "rgba(100, 149, 237, 0.1)" // Blue tint
+          : "rgba(139, 69, 19, 0.1)"; // Brown tint
+        ctx.fill();
 
-        ctx.beginPath()
-        ctx.moveTo(region.points[0][0], region.points[0][1])
-        for (let i = 1; i < region.points.length; i++) {
-          ctx.lineTo(region.points[i][0], region.points[i][1])
-        }
-        ctx.closePath()
-
-        ctx.fillStyle = isEnemyRegion ? "rgba(192, 57, 43, 0.08)" : "#FFF9E6"
-        ctx.fill()
-
-        ctx.strokeStyle = "#2c3e50"
-        ctx.lineWidth = 2.5
-        ctx.lineCap = "round"
-        ctx.lineJoin = "round"
-        ctx.stroke()
-
-        if (isEnemyRegion) {
-          drawHachure(ctx, region.points, 8)
-        }
-
-        if (visibleLayers.terrain) {
-          drawTerrainFeatures(ctx, region)
-        }
-
+        // Border (Rough)
+        rc.polygon(region.points, {
+           stroke: "#5d4037", strokeWidth: 2, roughness: 1.5, bowing: 2
+        });
+        
+        // Label
         const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length
-        const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length
-
-        ctx.fillStyle = "#2c3e50"
-        ctx.font = "bold 13px serif"
-        ctx.textAlign = "center"
-        ctx.textBaseline = "middle"
-        ctx.fillText(region.name, centerX, centerY)
+        const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
+        
+        ctx.save();
+        ctx.fillStyle = "rgba(60, 40, 30, 0.5)";
+        ctx.font = "italic small-caps 28px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(region.name, centerX, centerY);
+        ctx.restore();
       })
+
+      // River Overlay (The 'Front')
+      const riverPath = [
+         [400, 0], [420, 100], [380, 200], [410, 300], [390, 400], [400, 600]
+      ] as [number, number][];
+      
+      rc.curve(riverPath, {
+        stroke: "#3498db", strokeWidth: 5, roughness: 1.1, bowing: 1.5
+      });
     }
 
+    // 3. Render Hex Grid
+    if (visibleLayers.grid && scenario.hexGrid) {
+      const hexRadius = 30;
+      
+      scenario.hexGrid.forEach(hex => {
+         const corners: [number, number][] = [];
+         for (let i = 0; i < 6; i++) {
+            const angle_deg = 60 * i + 30;
+            const angle_rad = Math.PI / 180 * angle_deg;
+            corners.push([
+               hex.x + hexRadius * Math.cos(angle_rad),
+               hex.y + hexRadius * Math.sin(angle_rad)
+            ]);
+         }
+         
+         // Style based on Phase 2 Layer System
+         let fill = "rgba(255, 255, 255, 0.0)";
+         let fillStyle = "solid";
+         let stroke = "rgba(0,0,0,0.06)";
+         
+         if (hex.terrain === 'forest') {
+            fill = "rgba(34, 139, 34, 0.15)";
+            fillStyle = "hachure";
+            stroke = "rgba(34, 139, 34, 0.3)";
+         } else if (hex.terrain === 'urban_ruins') {
+            fill = "rgba(44, 62, 80, 0.25)";
+            fillStyle = "cross-hatch";
+            stroke = "rgba(44, 62, 80, 0.4)";
+         } else if (hex.terrain === 'swamp') {
+            fill = "rgba(46, 204, 113, 0.1)";
+            fillStyle = "dashed";
+         }
+
+         rc.polygon(corners, {
+            fill: fill,
+            fillStyle: fillStyle,
+            stroke: stroke,
+            strokeWidth: 0.5,
+            roughness: 0.5
+         });
+      });
+    }
+
+    // 4. Render Unit Status Rings
     if (visibleLayers.units) {
       scenario.units.forEach((unit) => {
-        drawUnitCounter(ctx, unit.location, unit.owner, unit.type, 1)
+        let loc = unit.location;
+        if (unit.q !== undefined && unit.r !== undefined && scenario.hexGrid) {
+          const hex = scenario.hexGrid.find(h => h.q === unit.q && h.r === unit.r);
+          if (hex) loc = { x: hex.x, y: hex.y };
+        }
+        
         if (unit.status) {
-          drawUnitStatus(ctx, unit.location, unit.status, 30)
+          drawUnitStatus(ctx, loc, unit.status, 32);
         }
-        if (unit.type === "artillery") {
-          drawThreatZone(ctx, unit.location, 80)
-        }
-      })
+      });
     }
 
-    if (selectedTactic) {
+    // 5. Render Tactical Actions (When Tactic Selected)
+    if (selectedTactic && visibleLayers.units) {
       const playerUnits = scenario.units.filter((u) => u.owner === "player")
       const enemyUnits = scenario.units.filter((u) => u.owner === "enemy")
 
       if (playerUnits.length > 0 && enemyUnits.length > 0) {
         playerUnits.forEach((playerUnit) => {
+          // Determine position (prioritize hex)
+          let fromLoc = playerUnit.location;
+          if (playerUnit.q !== undefined && playerUnit.r !== undefined && scenario.hexGrid) {
+            const hex = scenario.hexGrid.find(h => h.q === playerUnit.q && h.r === playerUnit.r);
+            if (hex) fromLoc = { x: hex.x, y: hex.y };
+          }
+
+          // Find nearest enemy unit instead of drawing to all
+          let nearestEnemy = null;
+          let minDist = Infinity;
+          
           enemyUnits.forEach((enemyUnit) => {
+            let enemyLoc = enemyUnit.location;
+            if (enemyUnit.q !== undefined && enemyUnit.r !== undefined && scenario.hexGrid) {
+              const hex = scenario.hexGrid.find(h => h.q === enemyUnit.q && h.r === enemyUnit.r);
+              if (hex) enemyLoc = { x: hex.x, y: hex.y };
+            }
+            
+            const dx = enemyLoc.x - fromLoc.x;
+            const dy = enemyLoc.y - fromLoc.y;
+            const dist = dx*dx + dy*dy;
+            
+            if (dist < minDist) {
+              minDist = dist;
+              nearestEnemy = enemyLoc;
+            }
+          });
+          
+          if (nearestEnemy) {
             renderVisualAction(selectedTactic.semanticAction as any, {
               ctx,
-              from: playerUnit.location,
-              to: enemyUnit.location,
-              opacity: 0.7,
-            })
-          })
-        })
+              from: fromLoc,
+              to: nearestEnemy,
+              opacity: 0.6,
+            });
+          }
+        });
       }
+    }
+
+    // 6. Render Visual Effects from AI Response
+    const aiResponse = useTargetingStore.getState().gameResponse;
+    if (aiResponse && aiResponse.visual_fx && visibleLayers.units) {
+      aiResponse.visual_fx.forEach((fx) => {
+        let fxLoc = { x: 400, y: 300 }; // Default center
+        
+        // Resolve effect location
+        if (fx.target_unit) {
+          const targetUnit = scenario.units.find(u => u.id === fx.target_unit);
+          if (targetUnit) {
+            fxLoc = targetUnit.location;
+            if (targetUnit.q !== undefined && targetUnit.r !== undefined && scenario.hexGrid) {
+              const hex = scenario.hexGrid.find(h => h.q === targetUnit.q && h.r === targetUnit.r);
+              if (hex) fxLoc = { x: hex.x, y: hex.y };
+            }
+          }
+        } else if (fx.region) {
+          const region = scenario.mapRegions.find(r => r.id === fx.region);
+          if (region) {
+            const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
+            const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
+            fxLoc = { x: centerX, y: centerY };
+          }
+        }
+        
+        // Render effect based on type
+        ctx.save();
+        switch (fx.type) {
+          case "DUST":
+            ctx.fillStyle = "rgba(210, 180, 140, 0.4)";
+            for (let i = 0; i < 8; i++) {
+              const angle = (i / 8) * Math.PI * 2;
+              const r = 30 + Math.random() * 20;
+              ctx.beginPath();
+              ctx.arc(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle), 8 + Math.random() * 4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            break;
+            
+          case "EXPLOSION":
+            ctx.strokeStyle = "rgba(255, 100, 0, 0.8)";
+            ctx.fillStyle = "rgba(255, 200, 0, 0.6)";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 12; i++) {
+              const angle = (i / 12) * Math.PI * 2;
+              const r = 20 + Math.random() * 15;
+              ctx.beginPath();
+              ctx.moveTo(fxLoc.x, fxLoc.y);
+              ctx.lineTo(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle));
+              ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.arc(fxLoc.x, fxLoc.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+            
+          case "SMOKE":
+            ctx.fillStyle = "rgba(80, 80, 80, 0.5)";
+            for (let i = 0; i < 6; i++) {
+              const offsetX = (Math.random() - 0.5) * 40;
+              const offsetY = (Math.random() - 0.5) * 40;
+              ctx.beginPath();
+              ctx.arc(fxLoc.x + offsetX, fxLoc.y + offsetY, 12 + Math.random() * 8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            break;
+            
+          case "FIRE":
+            ctx.fillStyle = "rgba(255, 80, 0, 0.7)";
+            ctx.strokeStyle = "rgba(255, 200, 0, 0.9)";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+              const angle = (i / 8) * Math.PI * 2;
+              const r = 15 + Math.random() * 10;
+              const flameHeight = 20 + Math.random() * 15;
+              ctx.beginPath();
+              ctx.moveTo(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle));
+              ctx.lineTo(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle) - flameHeight);
+              ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.arc(fxLoc.x, fxLoc.y, 18, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+            
+          case "IMPACT":
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+            ctx.lineWidth = 4;
+            for (let i = 0; i < 4; i++) {
+              const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+              const len = 25;
+              ctx.beginPath();
+              ctx.moveTo(fxLoc.x - len * Math.cos(angle) / 2, fxLoc.y - len * Math.sin(angle) / 2);
+              ctx.lineTo(fxLoc.x + len * Math.cos(angle) / 2, fxLoc.y + len * Math.sin(angle) / 2);
+              ctx.stroke();
+            }
+            break;
+            
+          case "MUD_SPLAT":
+            ctx.fillStyle = "rgba(101, 67, 33, 0.6)";
+            for (let i = 0; i < 10; i++) {
+              const offsetX = (Math.random() - 0.5) * 50;
+              const offsetY = (Math.random() - 0.5) * 50;
+              ctx.beginPath();
+              ctx.arc(fxLoc.x + offsetX, fxLoc.y + offsetY, 5 + Math.random() * 5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            break;
+        }
+        ctx.restore();
+      });
     }
 
     setIsRendered(true)
   }, [scenario, selectedTactic, visibleLayers])
-
-  function drawUnitCounter(
-    ctx: CanvasRenderingContext2D,
-    location: { x: number; y: number },
-    owner: string,
-    type: string,
-    opacity: number,
-  ) {
-    const size = 30
-    ctx.globalAlpha = opacity
-
-    ctx.fillStyle = owner === "player" ? "rgba(52, 152, 219, 0.7)" : "rgba(192, 57, 43, 0.7)"
-    ctx.fillRect(location.x - size / 2, location.y - size / 2, size, size)
-
-    ctx.strokeStyle = owner === "player" ? "#3498db" : "#c0392b"
-    ctx.lineWidth = 2
-    ctx.strokeRect(location.x - size / 2, location.y - size / 2, size, size)
-
-    ctx.fillStyle = "white"
-    ctx.font = "bold 14px serif"
-    ctx.textAlign = "center"
-    ctx.textBaseline = "middle"
-    const icons: Record<string, string> = {
-      armor: "⊞",
-      infantry: "⊠",
-      cavalry: "◯",
-      artillery: "◆",
-    }
-    ctx.fillText(icons[type] || "⊠", location.x, location.y)
-    ctx.globalAlpha = 1
-  }
-
-  function drawHachure(ctx: CanvasRenderingContext2D, points: [number, number][], spacing: number) {
-    const xs = points.map((p) => p[0])
-    const ys = points.map((p) => p[1])
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    const minY = Math.min(...ys)
-    const maxY = Math.max(...ys)
-
-    ctx.strokeStyle = "rgba(192, 57, 43, 0.15)"
-    ctx.lineWidth = 1
-    ctx.setLineDash([3, 2])
-
-    for (let x = minX; x < maxX; x += spacing) {
-      ctx.beginPath()
-      ctx.moveTo(x, minY)
-      ctx.lineTo(x + (maxY - minY), maxY)
-      ctx.stroke()
-    }
-    ctx.setLineDash([])
-  }
-
-  function drawTerrainFeatures(ctx: CanvasRenderingContext2D, region: any) {
-    const centerX = region.points.reduce((sum: number, p: [number, number]) => sum + p[0], 0) / region.points.length
-    const centerY = region.points.reduce((sum: number, p: [number, number]) => sum + p[1], 0) / region.points.length
-
-    ctx.strokeStyle = "rgba(52, 152, 219, 0.25)"
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.arc(centerX - 15, centerY - 15, 6, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(centerX + 15, centerY - 15, 6, 0, Math.PI * 2)
-    ctx.stroke()
-  }
 
   return (
     <motion.div
@@ -257,6 +402,17 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
             </label>
           </div>
         </motion.div>
+      )}
+
+      {/* Unit Layer (HTML Overlay) */}
+      {visibleLayers.units && (
+         <div className="absolute inset-0 pointer-events-none z-10">
+            {scenario.units.map(unit => (
+               <div key={unit.id} className="pointer-events-auto absolute" style={{ width: 0, height: 0 }}>
+                  <UnitCounter unit={unit} />
+               </div>
+            ))}
+         </div>
       )}
 
       <canvas

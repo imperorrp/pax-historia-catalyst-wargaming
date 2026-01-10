@@ -9,47 +9,40 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
     enemyPolity: "France",
     mapDimensions: {
       width: 800,
-      height: 500,
+      height: 600,
     },
     mapRegions: [
       {
-        id: "region-1",
+        id: "region-1", // Alsace (Right/East)
         name: "Alsace",
         points: [
-          [650, 200],
-          [750, 220],
-          [760, 320],
-          [720, 350],
-          [620, 340],
-          [640, 240],
+          [400, 0], [420, 100], [380, 200], [410, 300], [390, 400], [400, 600], // Border (River)
+          [800, 600], [800, 0] // East bound
         ],
-        terrain: "urban",
-        isCity: true,
+        gridScale: 30, 
+        neighbors: ["region-2"],
+        terrain: "forest",
+        isCity: false,
       },
       {
-        id: "region-2",
+        id: "region-2", // Lorraine (Left/West)
         name: "Lorraine",
         points: [
-          [500, 150],
-          [640, 160],
-          [650, 240],
-          [620, 340],
-          [450, 320],
-          [420, 200],
-        ],
+          [0, 0], 
+          [400, 0], [420, 100], [380, 200], [410, 300], [390, 400], [400, 600], // Border (River)
+          [0, 600] // West bound
+        ], 
+        gridScale: 30,
+        neighbors: ["region-1"],
         terrain: "plains",
-      },
-      {
-        id: "region-3",
-        name: "Border River",
-        points: [
-          [400, 100],
-          [500, 150],
-          [550, 200],
-          [480, 280],
-          [350, 250],
-        ],
-        terrain: "river",
+        features: [
+           {
+            id: "river_rhine",
+            type: "river",
+            // Semantic location only here, actual drawing will use the shared border geometry
+            location: { regionId: "region-2", type: "feature" } 
+          }
+        ]
       },
     ],
     units: [
@@ -58,7 +51,9 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         name: "1st Panzer Division",
         type: "armor",
         owner: "player",
-        location: { x: 300, y: 250 },
+        location: { x: 150, y: 250 }, 
+        q: 2, r: 5, // Hex Override
+        semanticPos: { regionId: "region-2", type: "sector", targetId: "west" },
         tags: ["Elite", "High Mobility"],
         visibility: 100,
         status: "fresh",
@@ -68,7 +63,9 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         name: "5th Infantry Corps",
         type: "infantry",
         owner: "player",
-        location: { x: 250, y: 320 },
+        location: { x: 100, y: 350 },
+        q: 2, r: 7, // Hex Override
+        semanticPos: { regionId: "region-2", type: "sector", targetId: "south_west" },
         tags: ["Reinforced", "Supply Train"],
         visibility: 100,
         status: "fresh",
@@ -78,7 +75,9 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         name: "7th Infantry Division",
         type: "infantry",
         owner: "enemy",
-        location: { x: 600, y: 280 },
+        location: { x: 600, y: 250 }, 
+        q: 9, r: 1, // Hex Override (East, Alsace)
+        semanticPos: { regionId: "region-1", type: "centroid" },
         tags: ["Entrenched", "Low Ammo"],
         visibility: 75,
         status: "engaged",
@@ -88,7 +87,9 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         name: "3rd Cavalry Squadron",
         type: "cavalry",
         owner: "enemy",
-        location: { x: 700, y: 150 },
+        location: { x: 750, y: 150 },
+        q: 10, r: -1, // Hex Override (North-East, Alsace)
+        semanticPos: { regionId: "region-1", type: "centroid" },
         tags: ["Mobile", "Scouting"],
         visibility: 50,
         status: "fresh",
@@ -140,6 +141,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
           [480, 280],
           [350, 200],
         ],
+        neighbors: ["nord-2", "nord-3"],
         terrain: "plains",
         isFort: true,
       },
@@ -152,6 +154,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
           [450, 150],
           [380, 280],
         ],
+        neighbors: ["nord-1"],
         terrain: "river",
       },
       {
@@ -163,6 +166,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
           [700, 420],
           [580, 430],
         ],
+        neighbors: ["nord-1"],
         terrain: "urban",
         isCity: true,
       },
@@ -174,6 +178,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "infantry",
         owner: "player",
         location: { x: 350, y: 350 },
+        semanticPos: { regionId: "nord-2", type: "sector", targetId: "south" },
         tags: ["Commander", "Reserve"],
         visibility: 100,
         status: "fresh",
@@ -184,6 +189,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "cavalry",
         owner: "player",
         location: { x: 320, y: 280 },
+        semanticPos: { regionId: "nord-2", type: "sector", targetId: "west" },
         tags: ["Fast", "Reconnaissance"],
         visibility: 100,
         status: "fresh",
@@ -194,6 +200,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "infantry",
         owner: "enemy",
         location: { x: 480, y: 180 },
+        semanticPos: { regionId: "nord-1", type: "centroid" },
         tags: ["Entrenched", "Superior Numbers"],
         visibility: 100,
         status: "engaged",
@@ -204,6 +211,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "infantry",
         owner: "enemy",
         location: { x: 650, y: 320 },
+        semanticPos: { regionId: "nord-3", type: "centroid" },
         tags: ["Mobile", "Reinforcements"],
         visibility: 80,
         status: "fresh",
@@ -261,6 +269,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
           [710, 350],
           [560, 360],
         ],
+        neighbors: ["med-2"],
         terrain: "urban",
         isFort: true,
         isCity: true,
@@ -274,6 +283,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
           [550, 150],
           [280, 180],
         ],
+        neighbors: ["med-1", "med-3"],
         terrain: "plains",
       },
       {
@@ -285,6 +295,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
           [450, 400],
           [200, 420],
         ],
+        neighbors: ["med-2"],
         terrain: "forest",
       },
     ],
@@ -295,6 +306,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "infantry",
         owner: "player",
         location: { x: 350, y: 300 },
+        semanticPos: { regionId: "med-2", type: "centroid" },
         tags: ["Siege Engineers", "Heavy"],
         visibility: 100,
         status: "fresh",
@@ -305,6 +317,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "artillery",
         owner: "player",
         location: { x: 300, y: 200 },
+        semanticPos: { regionId: "med-2", type: "sector", targetId: "west" },
         tags: ["Cannons", "Slow"],
         visibility: 100,
         status: "fresh",
@@ -315,6 +328,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "infantry",
         owner: "enemy",
         location: { x: 630, y: 250 },
+        semanticPos: { regionId: "med-1", type: "centroid" },
         tags: ["Fortified", "Outnumbered"],
         visibility: 100,
         status: "wavering",
@@ -325,6 +339,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
         type: "cavalry",
         owner: "enemy",
         location: { x: 250, y: 350 },
+        semanticPos: { regionId: "med-3", type: "centroid" },
         tags: ["Hidden", "Fast"],
         visibility: 30,
         status: "fresh",

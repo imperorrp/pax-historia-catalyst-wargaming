@@ -1,5 +1,4 @@
-import type { CanvasRenderingContext2D } from "canvas"
-import type { VisualActionType } from "./path-to-visual-action-type" // Declare or import VisualActionType
+import type { VisualActionType } from "./types"
 
 export interface DrawingContext {
   ctx: CanvasRenderingContext2D
@@ -48,6 +47,36 @@ export function drawADVANCE({ ctx, from, to, opacity = 1 }: DrawingContext) {
   drawArrowHead(ctx, to, ang, 20, "#2c3e50")
   ctx.globalAlpha = 1
 }
+
+// --- HEX ACTIONS ---
+
+export function drawHexPath({ ctx, path, color = "#e74c3c", opacity = 0.8 }: { ctx: CanvasRenderingContext2D, path: {x: number, y: number}[], color?: string, opacity?: number }) {
+  if (path.length < 2) return;
+
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 5]); // Dashed line for tactical movement
+  
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  
+  for (let i = 1; i < path.length; i++) {
+    ctx.lineTo(path[i].x, path[i].y);
+  }
+  
+  ctx.stroke();
+  ctx.setLineDash([]); // Reset
+  
+  // Terminal Arrow
+  const last = path[path.length - 1];
+  const prev = path[path.length - 2];
+  const ang = angle(prev, last);
+  drawArrowHead(ctx, last, ang, 15, color);
+  
+  ctx.globalAlpha = 1;
+}
+
 
 export function drawASSAULT({ ctx, from, to, opacity = 1 }: DrawingContext) {
   const ang = angle(from, to)

@@ -7,7 +7,7 @@ import { UnitCounter } from "./unit-counter"
 import { CatalystCard } from "./catalyst-card"
 import { ScenarioSwitcher } from "./scenario-switcher"
 import { useTargetingStore } from "@/lib/targeting-store"
-import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio } from "lucide-react"
+import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind } from "lucide-react"
 import { reconcileStateChanges, getInitialPayload } from "@/lib/game-loop"
 
 export function WarRoomLayout() {
@@ -15,11 +15,17 @@ export function WarRoomLayout() {
   const currentRound = useTargetingStore((state) => state.currentRound)
   const currentScenario = useTargetingStore((state) => state.currentScenario)
   const isAnimating = useTargetingStore((state) => state.isAnimating)
+  const history = useTargetingStore((state) => state.history)
+  const historyIndex = useTargetingStore((state) => state.historyIndex)
 
   const reset = useTargetingStore((state) => state.reset)
   const incrementRound = useTargetingStore((state) => state.incrementRound)
   const setGameResponse = useTargetingStore((state) => state.setGameResponse)
   const setAnimating = useTargetingStore((state) => state.setAnimating)
+  const saveToHistory = useTargetingStore((state) => state.saveToHistory)
+  const goToPreviousRound = useTargetingStore((state) => state.goToPreviousRound)
+  const goToNextRound = useTargetingStore((state) => state.goToNextRound)
+  const jumpToRound = useTargetingStore((state) => state.jumpToRound)
 
   const [logs, setLogs] = useState<string[]>(["Command Center initialized."])
   const [isLogExpanded, setIsLogExpanded] = useState(false)
@@ -58,6 +64,7 @@ export function WarRoomLayout() {
       currentScenario: updatedScenario,
     })
 
+    saveToHistory(updatedScenario, response.narrative_update, selectedTactic)
     incrementRound()
     console.log("[v0] Round incremented to:", currentRound + 1)
 
@@ -134,6 +141,29 @@ export function WarRoomLayout() {
               <div className="text-sm font-serif font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full">
                 ROUND {currentRound}
               </div>
+              
+              {/* History Navigation Controls */}
+              <div className="flex items-center gap-1 ml-2">
+                <button
+                  onClick={goToPreviousRound}
+                  disabled={historyIndex === 0 || isAnimating}
+                  className="p-1.5 rounded-md hover:bg-amber-900/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Previous Round"
+                >
+                  <ChevronLeft className="w-4 h-4 text-amber-700" />
+                </button>
+                <button
+                  onClick={goToNextRound}
+                  disabled={historyIndex === history.length - 1 || isAnimating}
+                  className="p-1.5 rounded-md hover:bg-amber-900/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Next Round"
+                >
+                  <ChevronRight className="w-4 h-4 text-amber-700" />
+                </button>
+                <span className="text-xs text-amber-700 ml-1 font-mono">
+                  {historyIndex + 1}/{history.length}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-sm text-amber-800/70">
@@ -172,20 +202,50 @@ export function WarRoomLayout() {
           </button>
 
           {isLogExpanded && (
-            <div className="flex-1 overflow-y-auto space-y-2 p-3 text-xs font-mono text-amber-800/80">
-              <AnimatePresence mode="popLayout">
-                {logs.map((log, idx) => (
-                  <motion.div
+            <div className="flex-1 overflow-y-auto p-3 text-xs">
+              {/* History Timeline */}
+              <div className="space-y-1 mb-3">
+                <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider flex items-center gap-1">
+                  <Rewind className="w-3 h-3" />
+                  History
+                </div>
+                {history.map((entry, idx) => (
+                  <button
                     key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="py-1.5 px-2.5 bg-amber-50/40 rounded border-l-2 border-amber-600/40 text-amber-900/70"
+                    onClick={() => jumpToRound(idx)}
+                    className={`w-full text-left py-1.5 px-2.5 rounded border-l-2 transition-all ${
+                      idx === historyIndex
+                        ? "bg-amber-600/20 border-amber-600 text-amber-900 font-semibold"
+                        : "bg-amber-50/40 border-amber-600/40 text-amber-900/70 hover:bg-amber-100/60"
+                    }`}
                   >
-                    {log}
-                  </motion.div>
+                    <div className="font-mono text-xs">R{entry.round}</div>
+                    {entry.tacticUsed && (
+                      <div className="text-xs opacity-75 truncate">{entry.tacticUsed.title}</div>
+                    )}
+                  </button>
                 ))}
-              </AnimatePresence>
+              </div>
+
+              {/* Regular Logs */}
+              <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider">
+                Dispatch Log
+              </div>
+              <div className="space-y-2 font-mono text-amber-800/80">
+                <AnimatePresence mode="popLayout">
+                  {logs.map((log, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="py-1.5 px-2.5 bg-amber-50/40 rounded border-l-2 border-amber-600/40 text-amber-900/70"
+                    >
+                      {log}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
             </div>
           )}
         </div>
@@ -232,15 +292,22 @@ export function WarRoomLayout() {
                 <motion.div
                   key={unit.id}
                   className={`
-                    p-3 rounded-md text-xs border-l-4 transition-all font-serif
+                    p-3 rounded-md text-xs border-l-4 transition-all font-serif relative
                     ${
                       unit.owner === "player"
-                        ? "bg-blue-50/50 border-blue-400 text-blue-900"
-                        : "bg-red-50/50 border-red-400 text-red-900"
+                        ? "bg-blue-50/50 border-blue-500 text-blue-900"
+                        : "bg-red-50/50 border-red-500 text-red-900"
                     }
                   `}
                 >
-                  <div className="font-bold leading-tight">{unit.name}</div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="font-bold text-sm">{unit.name}</div>
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                      unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"
+                    }`}>
+                      {unit.owner === "player" ? currentScenario.playerPolity : currentScenario.enemyPolity}
+                    </span>
+                  </div>
                   <div className="opacity-75 text-xs mt-1">{unit.type}</div>
                   {unit.status && (
                     <div className="text-xs mt-1 opacity-60 uppercase tracking-wider">Status: {unit.status}</div>

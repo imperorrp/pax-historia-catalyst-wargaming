@@ -4,42 +4,66 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
   // WW2 Blitzkrieg - Flank Left Success
   ww2_flank_left_success: {
     narrative_update:
-      "Your Panzers execute a textbook flanking maneuver through the forest cover. The French infantry, caught unprepared, begins a fighting retreat. Morale wavers!",
+      "Your Panzers execute a textbook flanking maneuver through the forest cover, moving through the northern Ardennes and striking the exposed French left flank. The 7th Infantry Division, caught mid-rotation, begins a fighting retreat toward Metz. Enemy morale wavers as their defensive line fractures!",
     state_changes: [
       {
-        unit_id: "U1",
+        unit_id: "u1",
         action: "MOVE",
-        to_region: "Lorraine",
-        new_tags: ["Armor", "Fresh", "Breakthrough"],
+        semantic_update: {
+          regionId: "region-1", // Push into Alsace
+          type: "border",
+          targetId: "region-2",
+          offset: 0.3
+        },
+        new_tags: ["Armor", "Advancing", "Breakthrough"],
       },
       {
-        unit_id: "E1",
-        action: "UPDATE_STATUS",
-        new_tags: ["Infantry", "Entrenched", "Wavering"],
+        unit_id: "u2",
+        action: "MOVE",
+        semantic_update: {
+          regionId: "region-2",
+          type: "border",
+          targetId: "region-1",
+          offset: 0.5
+        },
+        new_tags: ["Infantry", "Following", "Support"],
+      },
+      {
+        unit_id: "e1",
+        action: "MOVE",
+        semantic_update: {
+          regionId: "region-1",
+          type: "sector",
+          targetId: "south_east", // Retreat deeper into Alsace
+        },
+        new_tags: ["Infantry", "Retreating", "Low Morale"],
       },
     ],
     visual_fx: [
-      { type: "DUST", region: "Lorraine" },
-      { type: "EXPLOSION", target_unit: "E1" },
+      { type: "DUST", region: "region-2" },
+      { type: "EXPLOSION", target_unit: "e1" },
+      { type: "SMOKE", region: "region-1" },
     ],
     next_options: [
       {
         id: "opt_push",
-        title: "Press Advantage",
-        description: "Capitalize on enemy confusion",
+        title: "Press the Pursuit",
+        description: "Chase retreating forces before they can regroup",
         semanticAction: "ASSAULT",
+        requiredUnitTypes: ["armor", "cavalry"],
       },
       {
         id: "opt_consolidate",
-        title: "Consolidate Position",
-        description: "Secure captured ground",
+        title: "Consolidate Gains",
+        description: "Secure captured territory and establish supply lines",
         semanticAction: "FORTIFY",
       },
       {
         id: "opt_encircle",
         title: "Complete Encirclement",
-        description: "Cut off retreat route",
+        description: "Send cavalry to cut off enemy retreat toward Strasbourg",
         semanticAction: "ENCIRCLE",
+        requiredUnitTypes: ["cavalry"],
       },
     ],
   },
@@ -47,41 +71,49 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
   // WW2 Blitzkrieg - Flank Left Failure
   ww2_flank_left_failure: {
     narrative_update:
-      "The Panzers push through the mud, but French anti-tank defenses are stronger than expected. Your spearhead is bogged down and taking fire. The advance stalls.",
+      "The Panzers attempt to push through the northern Ardennes, but French intelligence anticipated the move. Hidden 75mm anti-tank guns open fire from concealed positions along the forest edge. Your lead elements take heavy casualties and the advance stalls in the mud. The 7th Infantry Division counterattacks with artillery support!",
     state_changes: [
       {
-        unit_id: "U1",
+        unit_id: "u1",
         action: "UPDATE_STATUS",
-        new_tags: ["Armor", "Stalled", "Under_Fire"],
+        new_tags: ["Armor", "Pinned", "Heavy Casualties"],
       },
       {
-        unit_id: "E1",
+        unit_id: "u2",
         action: "UPDATE_STATUS",
-        new_tags: ["Infantry", "Entrenched", "Firing"],
+        new_tags: ["Infantry", "Defensive", "Holding"],
+      },
+      {
+        unit_id: "e1",
+        action: "UPDATE_STATUS",
+        new_tags: ["Infantry", "Entrenched", "Counterattacking"],
       },
     ],
     visual_fx: [
-      { type: "MUD_SPLAT", region: "Lorraine" },
-      { type: "IMPACT", target_unit: "U1" },
+      { type: "MUD_SPLAT", region: "region-2" },
+      { type: "IMPACT", target_unit: "u1" },
+      { type: "FIRE", region: "region-2" },
+      { type: "EXPLOSION", target_unit: "u1" },
     ],
     next_options: [
       {
         id: "opt_withdraw",
         title: "Tactical Withdrawal",
-        description: "Regroup and reassess",
+        description: "Pull back to regroup and reassess",
         semanticAction: "RETREAT",
       },
       {
-        id: "opt_suppress",
-        title: "Suppressive Fire",
-        description: "Neutralize enemy defenses",
+        id: "opt_artillery",
+        title: "Call Artillery",
+        description: "Suppress enemy positions with heavy bombardment",
         semanticAction: "BOMBARD",
+        requiredUnitTypes: ["artillery"],
       },
       {
-        id: "opt_alternative",
-        title: "Alternate Route",
-        description: "Find another approach",
-        semanticAction: "INFILTRATE",
+        id: "opt_hold",
+        title: "Hold Position",
+        description: "Dig in and defend current ground",
+        semanticAction: "FORTIFY",
       },
     ],
   },
@@ -92,14 +124,22 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
       "Your infantry columns, marching in perfect formation, overwhelm the Austrian defenders with disciplined musket fire and bayonet charges. The enemy line breaks!",
     state_changes: [
       {
-        unit_id: "N1",
+        unit_id: "n_u1",
         action: "MOVE",
-        to_region: "Pratzen",
+        semantic_update: {
+          regionId: "nord-1",
+          type: "centroid"
+        },
         new_tags: ["Infantry", "Fresh", "Victorious"],
       },
       {
-        unit_id: "E2",
-        action: "UPDATE_STATUS",
+        unit_id: "n_e1",
+        action: "MOVE",
+        semantic_update: {
+          regionId: "nord-1", 
+          type: "sector",
+          targetId: "east"
+        },
         new_tags: ["Infantry", "Broken", "Routing"],
       },
     ],
@@ -135,13 +175,16 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
       "Your siege works breach the castle walls. With rams and sappers wearing down the defenses, the garrison surrenders. The stronghold is yours!",
     state_changes: [
       {
-        unit_id: "M1",
+        unit_id: "med_u1",
         action: "MOVE",
-        to_region: "Castle",
+        semantic_update: {
+          regionId: "med-1",
+          type: "centroid"
+        },
         new_tags: ["Mixed", "Fresh", "Victorious"],
       },
       {
-        unit_id: "E3",
+        unit_id: "med_e1",
         action: "REMOVE",
       },
     ],
