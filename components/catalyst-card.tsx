@@ -9,17 +9,14 @@ interface CatalystCardProps {
 }
 
 export function CatalystCard({ option }: CatalystCardProps) {
-  const { state, selectedTactic, reset } = useTargetingStore()
+  const { state, selectedTactic, reset, selectTactic } = useTargetingStore()
   const isActive = state !== "idle" && selectedTactic?.id === option.id
 
   const handleClick = () => {
     if (isActive) {
       reset()
     } else {
-      useTargetingStore.setState({
-        selectedTactic: option,
-        state: "tactic_selected",
-      })
+      selectTactic(option)
     }
   }
 

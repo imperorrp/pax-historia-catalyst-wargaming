@@ -1,6 +1,8 @@
+// @ts-ignore - Third-party library without TypeScript definitions
 import PoissonDiskSampling from 'poisson-disk-sampling';
+// @ts-ignore - Third-party library without TypeScript definitions
 import { Delaunay } from 'd3-delaunay';
-import type { Location, MapRegion, SemanticPosition, TacticalNode, TacticalMesh } from "./types"
+import type { Location, MapRegion, SemanticPlacement, SemanticPosition, TacticalNode, TacticalMesh } from "./types"
 
 // Calculate centroid of a polygon
 export function getPolygonCentroid(points: [number, number][]): Location {
@@ -144,13 +146,13 @@ export function generateTacticalMesh(
     const points = pds.fill();
     
     // Filter points inside the polygon
-    const validPoints = points.map((p: any) => ({
+    const validPoints = points.map((p: [number, number]) => ({
       x: p[0] + bounds.minX,
       y: p[1] + bounds.minY
-    })).filter(p => isPointInPolygon(p, region.points));
+    })).filter((p: Location) => isPointInPolygon(p, region.points));
     
     // Create nodes
-    const regionNodes: TacticalNode[] = validPoints.map((p, i) => ({
+    const regionNodes: TacticalNode[] = validPoints.map((p: Location, i: number) => ({
       id: `${region.id}_node_${i}`,
       x: p.x,
       y: p.y,

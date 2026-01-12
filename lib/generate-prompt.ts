@@ -12,7 +12,7 @@ export function generateTacticalPrompt(
     unitType: sourceUnit.type,
     fromRegion: sourceRegion.name,
     toRegion: targetRegion.name,
-    visualPath: tactic.visualPath,
+    visualPath: tactic.semanticAction,
   }
 
   return `TACTICAL CATALYST ACTIVATED:
@@ -24,7 +24,7 @@ into enemy territory at "${tacticalContext.toRegion}".
 TACTICAL CONTEXT:
 - Maneuver Type: ${tacticalContext.maneuver}
 - Unit Classification: ${tacticalContext.unitType}
-- Attack Vector: ${tacticalContext.visualPath === "curve_left" ? "Left Flank" : tacticalContext.visualPath === "curve_right" ? "Right Flank" : tacticalContext.visualPath === "pincer" ? "Encirclement" : "Direct Assault"}
+- Attack Vector: ${tacticalContext.visualPath === "FLANK_LEFT" ? "Left Flank" : tacticalContext.visualPath === "FLANK_RIGHT" ? "Right Flank" : tacticalContext.visualPath === "ENCIRCLE" ? "Encirclement" : "Direct Assault"}
 - Source Position: ${tacticalContext.fromRegion}
 - Target Position: ${tacticalContext.toRegion}
 

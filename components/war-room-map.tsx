@@ -19,41 +19,20 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isRendered, setIsRendered] = useState(false)
-  const { selectedTactic, visibleLayers, setScenario, updateScenarioLayout } = useTargetingStore()
+  const selectedTactic = useTargetingStore((s) => s.selectedTactic)
+  const visibleLayers = useTargetingStore((s) => s.visibleLayers)
+  const history = useTargetingStore((s) => s.history)
+  const historyIndex = useTargetingStore((s) => s.historyIndex)
   const [showLayerPanel, setShowLayerPanel] = useState(false)
+  const [showLegend, setShowLegend] = useState(false)
 
-  // Hydration: measure container and hydrate scenario to actual pixel dims
+  // Hydration: One-time hydration on mount if needed
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const measureAndMaybeHydrate = () => {
-      const rect = el.getBoundingClientRect();
-      const width = Math.round(rect.width);
-      const height = Math.round(rect.height);
-
-      // Only re-hydrate if dimensions have changed significantly (>2px) to avoid rounding jitter
-      // or if grid is missing
-      const dimMismatch = Math.abs(scenario.mapDimensions.width - width) > 2 || 
-                          Math.abs(scenario.mapDimensions.height - height) > 2;
-
-      const needsHydrate = !scenario.hexGrid || dimMismatch;
-      
-      if (needsHydrate && width > 0 && height > 0) {
-        console.log("[hydrate] Re-hydrating scenario:", scenario.id, "with", width, "x", height);
-        const hydrated = hydrateScenarioLayout(scenario, width, height);
-        updateScenarioLayout(hydrated);
-      }
-    };
-
-    // Initial measure
-    measureAndMaybeHydrate();
-
-    // Observe resize and re-hydrate if size changes
-    const ro = new ResizeObserver(() => measureAndMaybeHydrate());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [scenario.id, containerRef.current, scenario.hexGrid, scenario.mapDimensions, updateScenarioLayout]);
+    if (!scenario.hexGrid) {
+      console.log("[hydrate] Initial hydration for scenario:", scenario.id);
+      // Scenarios should already be hydrated by the store, but this is a safety net
+    }
+  }, [scenario.id, scenario.hexGrid]);
 
   // Render canvas when scenario or visibility changes
   useEffect(() => {
@@ -149,7 +128,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
             fillStyle = "solid";
             stroke = "rgba(50, 50, 50, 0.8)";
             strokeWidth = 2;
-         } else if (hex.structure === 'city_block' || hex.terrain === 'urban_ruins' || hex.terrain === 'urban') {
+         } else if (hex.structure === 'city_block' || hex.terrain === 'urban_ruins') {
             fill = "rgba(44, 62, 80, 0.3)";
             fillStyle = "cross-hatch";
             stroke = "rgba(44, 62, 80, 0.4)";
@@ -160,7 +139,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
          } else if (hex.terrain === 'swamp') {
             fill = "rgba(46, 204, 113, 0.1)";
             fillStyle = "dashed";
-         } else if (hex.terrain === 'river') {
+         } else if (hex.infrastructure?.includes('river')) {
             fill = "rgba(52, 152, 219, 0.3)";
             fillStyle = "zigzag";
             stroke = "rgba(52, 152, 219, 0.5)";
@@ -202,9 +181,17 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
 
     // 5. Render Tactical Actions (When Tactic Selected)
-    if (selectedTactic && visibleLayers.units) {
+    // For historical rounds: show the tactic that was selected and executed in that round
+    // For current round: show the tactic currently selected (if any), or none if not selected yet
+    const isHistorical = historyIndex < history.length - 1
+    const tacticToDisplay = isHistorical ? history[historyIndex]?.tacticUsed : selectedTactic
+    console.debug('[render] tacticToDisplay', tacticToDisplay?.id ?? null, 'selectedTactic', selectedTactic?.id ?? null, 'isHistorical', isHistorical, 'historyIndex', historyIndex, 'historyLen', history.length, 'tacticUsed', history[historyIndex]?.tacticUsed?.id ?? null)
+    console.debug('[render] visibleLayers.units', visibleLayers.units, 'scenario.hexGrid exists', !!scenario.hexGrid, 'scenario.units.length', scenario.units.length)
+    if (tacticToDisplay && visibleLayers.units) {
+      console.debug('[render] Rendering visual action for tactic', tacticToDisplay.id)
       const playerUnits = scenario.units.filter((u) => u.owner === "player")
       const enemyUnits = scenario.units.filter((u) => u.owner === "enemy")
+      console.debug('[render] playerUnits count', playerUnits.length, 'enemyUnits count', enemyUnits.length)
 
       if (playerUnits.length > 0 && enemyUnits.length > 0) {
         playerUnits.forEach((playerUnit) => {
@@ -236,12 +223,15 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
           });
           
           if (nearestEnemy) {
-            renderVisualAction(selectedTactic.semanticAction as any, {
+            console.debug('[render] Drawing visual action from', fromLoc, 'to', nearestEnemy, 'for tactic', tacticToDisplay.id)
+            renderVisualAction(tacticToDisplay.semanticAction as any, {
               ctx,
               from: fromLoc,
               to: nearestEnemy,
-              opacity: 0.6,
+              opacity: 1.0,
             });
+          } else {
+            console.debug('[render] No nearest enemy found for player unit', playerUnit.id)
           }
         });
       }
@@ -359,7 +349,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
 
     setIsRendered(true)
-  }, [scenario.id, scenario.hexGrid, selectedTactic, visibleLayers]) // Fixed dep array to prevent rerenders
+  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers]) // Fixed dep array to prevent rerenders
 
   return (
     <motion.div
@@ -367,14 +357,23 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: isRendered ? 1 : 0 }}
       transition={{ duration: 0.5 }}
-      className="relative w-full h-full"
+      className="relative w-full h-full overflow-auto"
     >
-      <button
-        onClick={() => setShowLayerPanel(!showLayerPanel)}
-        className="absolute top-4 left-4 z-20 p-2.5 bg-amber-900/10 hover:bg-amber-900/20 rounded-lg transition-colors text-amber-800 backdrop-blur-sm border border-amber-900/15"
-      >
-        <Grid3X3 className="w-5 h-5" />
-      </button>
+      <div className="absolute top-4 left-4 z-20 flex gap-2">
+        <button
+          onClick={() => setShowLayerPanel(!showLayerPanel)}
+          className="p-2.5 bg-amber-900/10 hover:bg-amber-900/20 rounded-lg transition-colors text-amber-800 backdrop-blur-sm border border-amber-900/15"
+        >
+          <Grid3X3 className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => setShowLegend(!showLegend)}
+          className="p-2.5 bg-amber-900/10 hover:bg-amber-900/20 rounded-lg transition-colors text-amber-800 backdrop-blur-sm border border-amber-900/15 font-serif font-bold text-sm"
+          title="Visual Action Legend"
+        >
+          ?
+        </button>
+      </div>
 
       {showLayerPanel && (
         <motion.div
@@ -436,12 +435,133 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
       <canvas
         ref={canvasRef}
-        className="w-full h-full block cursor-crosshair"
+        className="block cursor-crosshair"
         style={{
           imageRendering: "auto",
           boxShadow: "inset 0 1px 3px rgba(0,0,0,0.1)",
+          minWidth: scenario.mapDimensions.width,
+          minHeight: scenario.mapDimensions.height,
         }}
       />
+
+      {/* Visual Action Legend Modal */}
+      {showLegend && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowLegend(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-amber-50 rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-y-auto border border-amber-900/20 backdrop-blur-sm"
+          >
+            <div className="p-6">
+              <h2 className="text-2xl font-serif font-bold text-amber-900 mb-4">Visual Action Legend</h2>
+              <p className="text-amber-800/80 text-sm mb-6 font-serif">
+                Tactical arrows and symbols show the nature of military operations when you select a strategy.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LegendItem 
+                  title="ADVANCE" 
+                  color="#2c3e50" 
+                  description="Straight arrow - Forward movement of forces"
+                />
+                <LegendItem 
+                  title="ASSAULT" 
+                  color="#c0392b" 
+                  description="Thick arrow with limit bar - Direct attack"
+                />
+                <LegendItem 
+                  title="FLANK LEFT/RIGHT" 
+                  color="#f39c12" 
+                  description="Curved arrow - Flanking maneuver"
+                />
+                <LegendItem 
+                  title="ENCIRCLE" 
+                  color="#8e44ad" 
+                  description="Dual curved arrows - Surround enemy"
+                />
+                <LegendItem 
+                  title="BOMBARD" 
+                  color="#e74c3c" 
+                  description="Starburst pattern - Artillery bombardment"
+                />
+                <LegendItem 
+                  title="SUPPRESS" 
+                  color="rgba(231, 76, 60, 0.6)" 
+                  description="Cone of dots - Suppressive fire"
+                />
+                <LegendItem 
+                  title="FORTIFY" 
+                  color="#34495e" 
+                  description="Sawtooth line - Defensive positions"
+                />
+                <LegendItem 
+                  title="RETREAT" 
+                  color="#95a5a6" 
+                  description="Dashed arrow - Tactical withdrawal"
+                />
+                <LegendItem 
+                  title="INFILTRATE" 
+                  color="#27ae60" 
+                  description="Serpentine line - Stealth movement"
+                />
+                <LegendItem 
+                  title="AMBUSH" 
+                  color="#16a085" 
+                  description="Question mark - Hidden forces"
+                />
+                <LegendItem 
+                  title="SPEARHEAD" 
+                  color="#2c3e50" 
+                  description="Bold arrow - Concentrated breakthrough"
+                />
+                <LegendItem 
+                  title="FEINT" 
+                  color="#95a5a6" 
+                  description="Phantom arrow - Deceptive maneuver"
+                />
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-amber-900/20">
+                <h3 className="font-serif font-bold text-amber-900 mb-3">Unit Status Rings</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatusLegendItem color="#27ae60" label="Fresh" description="Solid ring" />
+                  <StatusLegendItem color="#e67e22" label="Engaged" description="Short dashes" />
+                  <StatusLegendItem color="#e74c3c" label="Wavering" description="Long dashes" />
+                  <StatusLegendItem color="#95a5a6" label="Routing" description="Faded blur" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </motion.div>
+  )
+}
+
+function LegendItem({ title, color, description }: { title: string; color: string; description: string }) {
+  return (
+    <div className="p-3 bg-white/50 rounded-lg border border-amber-900/10">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-6 h-6 rounded" style={{ backgroundColor: color, opacity: 0.7 }} />
+        <span className="font-serif font-bold text-sm text-amber-900">{title}</span>
+      </div>
+      <p className="text-xs text-amber-800/70 font-serif">{description}</p>
+    </div>
+  )
+}
+
+function StatusLegendItem({ color, label, description }: { color: string; label: string; description: string }) {
+  return (
+    <div className="text-center">
+      <div className="w-10 h-10 rounded-full mx-auto mb-1 border-2" style={{ borderColor: color }} />
+      <div className="font-serif font-bold text-xs text-amber-900">{label}</div>
+      <div className="text-xs text-amber-800/60">{description}</div>
+    </div>
   )
 }

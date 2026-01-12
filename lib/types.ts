@@ -28,6 +28,13 @@ export interface SemanticPlacement {
   tag: PositionTag;
 }
 
+export interface SemanticPosition {
+  type: AnchorType;
+  regionId: string;
+  targetId?: string; // For border/sector anchors
+  offset?: number; // For border positioning (0-1)
+}
+
 export interface Unit {
   id: string
   name: string

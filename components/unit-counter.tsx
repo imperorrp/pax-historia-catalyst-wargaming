@@ -41,8 +41,15 @@ export function UnitCounter({ unit }: UnitCounterProps) {
     unit.owner === "player" &&
     (!selectedTactic?.requiredUnitTypes || selectedTactic.requiredUnitTypes.includes(unit.type))
 
-  const isSelected = state === "unit_selected" && selectedUnit?.id === unit.id
-  const opacity = state === "idle" || isValidTarget || isSelected ? 1 : 0.3
+  const isSelected = selectedUnit?.id === unit.id
+
+  // Check for stacked units in same hex
+  const stackedUnits = currentScenario.units.filter(u => 
+    u.hex && unit.hex && u.hex.q === unit.hex.q && u.hex.r === unit.hex.r
+  )
+  const isStacked = stackedUnits.length > 1
+  const stackIndex = stackedUnits.findIndex(u => u.id === unit.id)
+  const stackCount = stackedUnits.length
 
   const drawNATOSymbol = () => {
     const symbolMap = {
@@ -57,13 +64,20 @@ export function UnitCounter({ unit }: UnitCounterProps) {
   const handleClick = () => {
     if (state === "tactic_selected" && isValidTarget) {
       useTargetingStore.setState({ selectedUnit: unit, state: "unit_selected" })
+    } else if (state === "idle" || state === "unit_selected") {
+      // Toggle unit selection - if same unit clicked, deselect it
+      if (selectedUnit?.id === unit.id) {
+        useTargetingStore.getState().selectUnit(null)
+      } else {
+        useTargetingStore.getState().selectUnit(unit)
+      }
     }
   }
 
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity, left: finalX, top: finalY }}
+      animate={{ scale: 1, opacity: 1, left: finalX, top: finalY }}
       transition={{ duration: 0.4, type: "spring" }}
       className="absolute"
       style={{
@@ -107,6 +121,13 @@ export function UnitCounter({ unit }: UnitCounterProps) {
            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white ${
               unit.status === 'engaged' ? 'bg-orange-500' : 'bg-gray-500'
            }`} />
+        )}
+        
+        {/* Stack Indicator */}
+        {stackCount > 1 && (
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 border border-white rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+            {stackCount}
+          </div>
         )}
       </motion.div>
 

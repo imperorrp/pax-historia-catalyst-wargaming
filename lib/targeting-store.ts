@@ -1,9 +1,9 @@
 import { create } from "zustand"
-import type { CatalystOption, WarRoomScenario, AIGameResponse } from "./types"
+import type { CatalystOption, WarRoomScenario, AIGameResponse, Unit } from "./types"
 import { SCENARIOS } from "./mock-scenario"
 import { hydrateScenarioLayout } from "./grid-engine/layout-solver"
 
-export type TargetingState = "idle" | "tactic_selected"
+export type TargetingState = "idle" | "tactic_selected" | "unit_selected"
 
 interface HistoryEntry {
   round: number
@@ -15,6 +15,7 @@ interface HistoryEntry {
 interface TargetingStore {
   state: TargetingState
   selectedTactic: CatalystOption | null
+  selectedUnit: Unit | null
   currentRound: number
   currentScenario: WarRoomScenario
   visibleLayers: {
@@ -30,6 +31,7 @@ interface TargetingStore {
 
   // Actions
   selectTactic: (tactic: CatalystOption) => void
+  selectUnit: (unit: Unit | null) => void
   reset: () => void
   incrementRound: () => void
   toggleLayer: (layer: keyof TargetingStore["visibleLayers"]) => void
@@ -49,6 +51,7 @@ const initialScenario = hydrateScenarioLayout(SCENARIOS.ww2_blitzkrieg);
 export const useTargetingStore = create<TargetingStore>((set, get) => ({
   state: "idle",
   selectedTactic: null,
+  selectedUnit: null,
   currentRound: 1,
   currentScenario: initialScenario,
   visibleLayers: {
@@ -62,16 +65,33 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   history: [{ round: 1, scenario: initialScenario, narrative: "Initial deployment", tacticUsed: null }],
   historyIndex: 0,
 
-  selectTactic: (tactic) =>
+  selectTactic: (tactic) => {
+    console.debug('[history] selectTactic called:', tactic?.id ?? null)
     set({
       selectedTactic: tactic,
       state: "tactic_selected",
+    })
+    // Update the current history entry to persist the selection
+    const { history, historyIndex } = get()
+    if (historyIndex >= 0 && historyIndex < history.length) {
+      const newHistory = [...history]
+      newHistory[historyIndex] = { ...newHistory[historyIndex], tacticUsed: tactic }
+      console.debug('[history] selectTactic: updating historyIndex', historyIndex, 'with tactic', tactic?.id ?? null)
+      set({ history: newHistory })
+    }
+  },
+
+  selectUnit: (unit) =>
+    set({
+      selectedUnit: unit,
+      state: unit ? "unit_selected" : "idle",
     }),
 
   reset: () =>
     set({
       state: "idle",
       selectedTactic: null,
+      selectedUnit: null,
     }),
 
   incrementRound: () => set({ currentRound: get().currentRound + 1 }),
@@ -107,6 +127,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   setAnimating: (animating) => set({ isAnimating: animating }),
 
   saveToHistory: (scenario, narrative, tactic) => {
+    console.debug('[history] saveToHistory called with tactic', tactic?.id ?? null)
     const { history, historyIndex } = get()
     const newHistory = history.slice(0, historyIndex + 1)
     newHistory.push({
@@ -115,6 +136,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
       narrative,
       tacticUsed: tactic,
     })
+    console.debug('[history] saveToHistory: saved tactic', tactic?.id ?? null, 'at round', newHistory.length)
     set({ history: newHistory, historyIndex: newHistory.length - 1 })
   },
 
@@ -123,12 +145,14 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
     if (historyIndex > 0) {
       const prevIndex = historyIndex - 1
       const prevEntry = history[prevIndex]
+      const isHistorical = prevIndex < history.length - 1
+      console.debug('[history] goToPreviousRound -> prevIndex', prevIndex, 'isHistorical', isHistorical, 'tacticUsed', prevEntry.tacticUsed?.id ?? null)
       set({
         historyIndex: prevIndex,
         currentRound: prevEntry.round,
-        currentScenario: prevEntry.scenario,
-        selectedTactic: null,
-        state: "idle",
+        currentScenario: hydrateScenarioLayout(prevEntry.scenario),
+        selectedTactic: null, // selectedTactic is only for current round selections
+        state: prevEntry.tacticUsed ? "tactic_selected" : "idle",
       })
     }
   },
@@ -138,12 +162,14 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
     if (historyIndex < history.length - 1) {
       const nextIndex = historyIndex + 1
       const nextEntry = history[nextIndex]
+      const isHistorical = nextIndex < history.length - 1
+      console.debug('[history] goToNextRound -> nextIndex', nextIndex, 'isHistorical', isHistorical, 'tacticUsed', nextEntry.tacticUsed?.id ?? null)
       set({
         historyIndex: nextIndex,
         currentRound: nextEntry.round,
-        currentScenario: nextEntry.scenario,
-        selectedTactic: null,
-        state: "idle",
+        currentScenario: hydrateScenarioLayout(nextEntry.scenario),
+        selectedTactic: null, // selectedTactic is only for current round selections
+        state: nextEntry.tacticUsed ? "tactic_selected" : "idle",
       })
     }
   },
@@ -152,12 +178,14 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
     const { history } = get()
     if (index >= 0 && index < history.length) {
       const entry = history[index]
+      const isHistorical = index < history.length - 1
+      console.debug('[history] jumpToRound -> index', index, 'isHistorical', isHistorical, 'tacticUsed', entry.tacticUsed?.id ?? null)
       set({
         historyIndex: index,
         currentRound: entry.round,
-        currentScenario: entry.scenario,
-        selectedTactic: null,
-        state: "idle",
+        currentScenario: hydrateScenarioLayout(entry.scenario),
+        selectedTactic: null, // selectedTactic is only for current round selections
+        state: entry.tacticUsed ? "tactic_selected" : "idle",
       })
     }
   },

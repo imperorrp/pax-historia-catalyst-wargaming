@@ -35,8 +35,14 @@ export function drawADVANCE({ ctx, from, to, opacity = 1 }: DrawingContext) {
 
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#2c3e50"
-  ctx.lineWidth = 4
+  ctx.lineWidth = 6
   ctx.fillStyle = "#2c3e50"
+
+  // Draw shadow for depth
+  ctx.shadowColor = "rgba(0, 0, 0, 0.3)"
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetX = 2
+  ctx.shadowOffsetY = 2
 
   ctx.beginPath()
   ctx.moveTo(from.x, from.y)
@@ -44,7 +50,13 @@ export function drawADVANCE({ ctx, from, to, opacity = 1 }: DrawingContext) {
   ctx.stroke()
 
   // Arrowhead
-  drawArrowHead(ctx, to, ang, 20, "#2c3e50")
+  drawArrowHead(ctx, to, ang, 28, "#2c3e50")
+  
+  // Reset shadow
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
   ctx.globalAlpha = 1
 }
 
@@ -83,8 +95,14 @@ export function drawASSAULT({ ctx, from, to, opacity = 1 }: DrawingContext) {
 
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#c0392b"
-  ctx.lineWidth = 5
+  ctx.lineWidth = 7
   ctx.fillStyle = "#c0392b"
+
+  // Add shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.4)"
+  ctx.shadowBlur = 5
+  ctx.shadowOffsetX = 2
+  ctx.shadowOffsetY = 2
 
   ctx.beginPath()
   ctx.moveTo(from.x, from.y)
@@ -92,18 +110,25 @@ export function drawASSAULT({ ctx, from, to, opacity = 1 }: DrawingContext) {
   ctx.stroke()
 
   // Perpendicular "Limit of Advance" bar
-  const barLength = 30
+  const barLength = 40
   const barX1 = to.x + barLength * Math.cos(ang + Math.PI / 2)
   const barY1 = to.y + barLength * Math.sin(ang + Math.PI / 2)
   const barX2 = to.x + barLength * Math.cos(ang - Math.PI / 2)
   const barY2 = to.y + barLength * Math.sin(ang - Math.PI / 2)
 
+  ctx.lineWidth = 5
   ctx.beginPath()
   ctx.moveTo(barX1, barY1)
   ctx.lineTo(barX2, barY2)
   ctx.stroke()
 
-  drawArrowHead(ctx, to, ang, 20, "#c0392b")
+  drawArrowHead(ctx, to, ang, 30, "#c0392b")
+  
+  // Reset shadow
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
   ctx.globalAlpha = 1
 }
 
@@ -113,14 +138,26 @@ export function drawFLANK_LEFT({ ctx, from, to, opacity = 1 }: DrawingContext) {
 
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#f39c12"
-  ctx.lineWidth = 4
+  ctx.lineWidth = 6
+
+  // Add shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.3)"
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetX = 2
+  ctx.shadowOffsetY = 2
 
   ctx.beginPath()
   ctx.moveTo(from.x, from.y)
   ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y)
   ctx.stroke()
 
-  drawArrowHead(ctx, to, ang, 18, "#f39c12")
+  drawArrowHead(ctx, to, ang, 26, "#f39c12")
+  
+  // Reset shadow
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
   ctx.globalAlpha = 1
 }
 
@@ -130,14 +167,26 @@ export function drawFLANK_RIGHT({ ctx, from, to, opacity = 1 }: DrawingContext) 
 
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#f39c12"
-  ctx.lineWidth = 4
+  ctx.lineWidth = 6
+
+  // Add shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.3)"
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetX = 2
+  ctx.shadowOffsetY = 2
 
   ctx.beginPath()
   ctx.moveTo(from.x, from.y)
   ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y)
   ctx.stroke()
 
-  drawArrowHead(ctx, to, ang, 18, "#f39c12")
+  drawArrowHead(ctx, to, ang, 26, "#f39c12")
+  
+  // Reset shadow
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
   ctx.globalAlpha = 1
 }
 
@@ -149,7 +198,13 @@ export function drawENCIRCLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
 
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#8e44ad"
-  ctx.lineWidth = 4
+  ctx.lineWidth = 5
+
+  // Add shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.3)"
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetX = 2
+  ctx.shadowOffsetY = 2
 
   ctx.beginPath()
   ctx.moveTo(from.x, from.y)
@@ -161,8 +216,14 @@ export function drawENCIRCLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
   ctx.quadraticCurveTo(cp2.x, cp2.y, to.x - 40, to.y + 40)
   ctx.stroke()
 
-  drawArrowHead(ctx, { x: to.x - 40, y: to.y - 40 }, ang1, 16, "#8e44ad")
-  drawArrowHead(ctx, { x: to.x - 40, y: to.y + 40 }, ang2, 16, "#8e44ad")
+  drawArrowHead(ctx, { x: to.x - 40, y: to.y - 40 }, ang1, 24, "#8e44ad")
+  drawArrowHead(ctx, { x: to.x - 40, y: to.y + 40 }, ang2, 24, "#8e44ad")
+  
+  // Reset shadow
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
   ctx.globalAlpha = 1
 }
 

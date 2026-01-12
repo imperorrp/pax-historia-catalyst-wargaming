@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { WarRoomMap } from "./war-room-map"
 import { UnitCounter } from "./unit-counter"
@@ -12,6 +12,7 @@ import { reconcileStateChanges, getInitialPayload } from "@/lib/game-loop"
 
 export function WarRoomLayout() {
   const selectedTactic = useTargetingStore((state) => state.selectedTactic)
+  const selectedUnit = useTargetingStore((state) => state.selectedUnit)
   const currentRound = useTargetingStore((state) => state.currentRound)
   const currentScenario = useTargetingStore((state) => state.currentScenario)
   const isAnimating = useTargetingStore((state) => state.isAnimating)
@@ -27,11 +28,34 @@ export function WarRoomLayout() {
   const goToNextRound = useTargetingStore((state) => state.goToNextRound)
   const jumpToRound = useTargetingStore((state) => state.jumpToRound)
 
-  const [logs, setLogs] = useState<string[]>(["Command Center initialized."])
+  const [logs, setLogs] = useState<Array<{text: string, round: number}>>([{text: "Command Center initialized.", round: 0}])
   const [isLogExpanded, setIsLogExpanded] = useState(false)
   const [isStatusExpanded, setIsStatusExpanded] = useState(false)
   const [isMapMaximized, setIsMapMaximized] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const unitsSidebarRef = useRef<HTMLDivElement>(null)
+
+  // Auto-open units sidebar and scroll to selected unit
+  useEffect(() => {
+    if (selectedUnit && !isStatusExpanded) {
+      setIsStatusExpanded(true)
+    }
+    
+    if (selectedUnit && unitsSidebarRef.current) {
+      // Find the selected unit element and scroll to it
+      const unitElements = unitsSidebarRef.current.querySelectorAll('[data-unit-id]')
+      const selectedElement = Array.from(unitElements).find(el => 
+        el.getAttribute('data-unit-id') === selectedUnit.id
+      ) as HTMLElement
+      
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+      }
+    }
+  }, [selectedUnit, isStatusExpanded])
 
   const handleCommit = async () => {
     if (!selectedTactic || isAnimating) return
@@ -51,8 +75,8 @@ export function WarRoomLayout() {
 
     setLogs((prev) => [
       ...prev,
-      `>>> ROUND ${currentRound} - ${selectedTactic.title} executed`,
-      `>>> ${response.narrative_update}`,
+      {text: `>>> ROUND ${currentRound} - ${selectedTactic.title} executed`, round: currentRound},
+      {text: `>>> ${response.narrative_update}`, round: currentRound},
     ])
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -99,9 +123,6 @@ export function WarRoomLayout() {
         <div className="flex-1 overflow-hidden">
           <div className="w-full h-full bg-amber-50 border border-amber-900/10 overflow-hidden shadow-inner relative">
             <WarRoomMap scenario={currentScenario} />
-            {currentScenario.units.map((unit) => (
-              <UnitCounter key={unit.id} unit={unit} />
-            ))}
           </div>
         </div>
 
@@ -239,9 +260,15 @@ export function WarRoomLayout() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0 }}
-                      className="py-1.5 px-2.5 bg-amber-50/40 rounded border-l-2 border-amber-600/40 text-amber-900/70"
+                      className={`py-1.5 px-2.5 rounded border-l-2 transition-all ${
+                        log.round === currentRound
+                          ? "bg-amber-200/60 border-amber-600 text-amber-950 font-semibold shadow-sm"
+                          : log.round === currentRound - 1
+                          ? "bg-amber-100/50 border-amber-500 text-amber-900/90"
+                          : "bg-amber-50/40 border-amber-600/40 text-amber-900/70"
+                      }`}
                     >
-                      {log}
+                      {log.text}
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -254,9 +281,6 @@ export function WarRoomLayout() {
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 overflow-hidden">
           <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative group">
             <WarRoomMap scenario={currentScenario} />
-            {currentScenario.units.map((unit) => (
-              <UnitCounter key={unit.id} unit={unit} />
-            ))}
 
             <motion.button
               initial={{ opacity: 0 }}
@@ -287,33 +311,99 @@ export function WarRoomLayout() {
           </button>
 
           {isStatusExpanded && (
-            <div className="flex-1 overflow-y-auto space-y-2 p-3">
-              {currentScenario.units.map((unit) => (
-                <motion.div
-                  key={unit.id}
-                  className={`
-                    p-3 rounded-md text-xs border-l-4 transition-all font-serif relative
-                    ${
-                      unit.owner === "player"
-                        ? "bg-blue-50/50 border-blue-500 text-blue-900"
-                        : "bg-red-50/50 border-red-500 text-red-900"
-                    }
-                  `}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-bold text-sm">{unit.name}</div>
-                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
-                      unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"
-                    }`}>
-                      {unit.owner === "player" ? currentScenario.playerPolity : currentScenario.enemyPolity}
-                    </span>
-                  </div>
-                  <div className="opacity-75 text-xs mt-1">{unit.type}</div>
-                  {unit.status && (
-                    <div className="text-xs mt-1 opacity-60 uppercase tracking-wider">Status: {unit.status}</div>
-                  )}
-                </motion.div>
-              ))}
+            <div ref={unitsSidebarRef} className="flex-1 overflow-y-auto space-y-2 p-3">
+              {currentScenario.units.map((unit) => {
+                const isSelected = selectedUnit?.id === unit.id
+                return (
+                  <motion.div
+                    key={unit.id}
+                    data-unit-id={unit.id}
+                    onClick={() => useTargetingStore.getState().selectUnit(unit)}
+                    className={`
+                      p-4 rounded-lg text-xs border-l-4 transition-all font-serif relative cursor-pointer
+                      hover:shadow-md hover:scale-[1.02] transform-gpu
+                      ${isSelected 
+                        ? 'ring-2 ring-amber-400 ring-offset-1 shadow-lg bg-gradient-to-r' 
+                        : 'hover:bg-amber-50/30'
+                      }
+                      ${
+                        unit.owner === "player"
+                          ? `border-blue-500 ${isSelected ? 'from-blue-100 to-blue-50' : 'bg-blue-50/50'} text-blue-900`
+                          : `border-red-500 ${isSelected ? 'from-red-100 to-red-50' : 'bg-red-50/50'} text-red-900`
+                      }
+                    `}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Selection Indicator */}
+                    {isSelected && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center"
+                      >
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      </motion.div>
+                    )}
+
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {/* Unit Type Icon */}
+                        <div className={`
+                          w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                          ${unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"}
+                        `}>
+                          {unit.type === 'infantry' ? '⊠' : 
+                           unit.type === 'armor' ? '◯' : 
+                           unit.type === 'cavalry' ? '∇' : '⚡'}
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm leading-tight">{unit.name}</div>
+                          <div className="text-xs opacity-75 capitalize">{unit.type}</div>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
+                        unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"
+                      }`}>
+                        {unit.owner === "player" ? currentScenario.playerPolity : currentScenario.enemyPolity}
+                      </span>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {unit.tags.slice(0, 2).map((tag, idx) => (
+                        <span key={idx} className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                          {tag}
+                        </span>
+                      ))}
+                      {unit.tags.length > 2 && (
+                        <span className="text-[10px] text-amber-600">+{unit.tags.length - 2} more</span>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    {unit.status && (
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          unit.status === 'fresh' ? 'bg-green-500' :
+                          unit.status === 'engaged' ? 'bg-orange-500' :
+                          unit.status === 'wavering' ? 'bg-red-500' : 'bg-gray-500'
+                        }`} />
+                        <span className="text-xs opacity-80 uppercase tracking-wider">
+                          {unit.status}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Position Info */}
+                    {unit.hex && (
+                      <div className="text-[10px] opacity-60 mt-1">
+                        Hex: ({unit.hex.q}, {unit.hex.r})
+                      </div>
+                    )}
+                  </motion.div>
+                )
+              })}
             </div>
           )}
         </div>
