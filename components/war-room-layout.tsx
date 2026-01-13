@@ -36,6 +36,24 @@ export function WarRoomLayout() {
   const unitsSidebarRef = useRef<HTMLDivElement>(null)
   const [isTacticalExpanded, setIsTacticalExpanded] = useState(true)
 
+  // Responsive: auto-expand sidebars on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      const isDesktop = window.innerWidth >= 1024 // lg breakpoint
+      if (isDesktop && !isLogExpanded) {
+        setIsLogExpanded(true)
+        setIsStatusExpanded(true)
+      }
+    }
+    
+    // Run on mount
+    handleResize()
+    
+    // Listen for resize
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const isHistoricalView = historyIndex < history.length - 1
 
   // Auto-open units sidebar and scroll to selected unit
@@ -160,7 +178,7 @@ export function WarRoomLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50 text-amber-900">
-      <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-6 py-4 flex-shrink-0 relative">
+      <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-3 md:px-6 py-2 md:py-4 flex-shrink-0 relative">
         {/* Historical View Safety Banner */}
         {isHistoricalView && (
           <div className="absolute top-0 left-0 right-0 h-1 bg-amber-400 overflow-hidden">
@@ -169,46 +187,46 @@ export function WarRoomLayout() {
         )}
         
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
               {isHistoricalView ? (
-                 <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full border border-amber-200 shadow-inner">
-                    <Rewind className="w-4 h-4" />
-                    <span className="text-xs font-bold font-serif uppercase tracking-wider">Historical Record</span>
+                 <div className="flex items-center gap-2 px-2 md:px-3 py-1 bg-amber-100 text-amber-800 rounded-full border border-amber-200 shadow-inner">
+                    <Rewind className="w-3 md:w-4 h-3 md:h-4" />
+                    <span className="text-[10px] md:text-xs font-bold font-serif uppercase tracking-wider">Historical</span>
                  </div>
               ) : (
                  <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.6)]" />
               )}
               
-              <h1 className="font-serif text-xl font-bold text-amber-900">COMMAND CENTER</h1>
-              <div className={`text-sm font-serif font-bold px-3 py-1 rounded-full transition-colors ${
+              <h1 className="font-serif text-base md:text-xl font-bold text-amber-900">COMMAND CENTER</h1>
+              <div className={`text-xs md:text-sm font-serif font-bold px-2 md:px-3 py-1 rounded-full transition-colors ${
                  isHistoricalView 
                    ? "bg-stone-200 text-stone-600 ring-1 ring-stone-300"
                    : "bg-red-100 text-red-700 shadow-sm"
               }`}>
-                ROUND {currentRound}
+                R{currentRound}
               </div>
               
               {/* History Navigation Controls */}
-              <div className="flex items-center gap-1 ml-4 bg-amber-900/5 p-1 rounded-lg border border-amber-900/5">
+              <div className="flex items-center gap-1 bg-amber-900/5 p-1 rounded-lg border border-amber-900/5">
                 <button
                   onClick={goToPreviousRound}
                   disabled={historyIndex === 0 || isAnimating}
-                  className="p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="p-1 md:p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                   title="Previous Round"
                 >
-                  <ChevronLeft className="w-4 h-4 text-amber-900" />
+                  <ChevronLeft className="w-3 md:w-4 h-3 md:h-4 text-amber-900" />
                 </button>
-                <div className="px-2 text-xs font-mono font-bold text-amber-900/60 min-w-[3rem] text-center">
-                   {historyIndex + 1} / {history.length}
+                <div className="px-1.5 md:px-2 text-[10px] md:text-xs font-mono font-bold text-amber-900/60 min-w-[2.5rem] md:min-w-[3rem] text-center">
+                   {historyIndex + 1}/{history.length}
                 </div>
                 <button
                   onClick={goToNextRound}
                   disabled={historyIndex === history.length - 1 || isAnimating}
-                  className="p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="p-1 md:p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                   title="Next Round"
                 >
-                  <ChevronRight className="w-4 h-4 text-amber-900" />
+                  <ChevronRight className="w-3 md:w-4 h-3 md:h-4 text-amber-900" />
                 </button>
               </div>
             </div>
@@ -230,9 +248,9 @@ export function WarRoomLayout() {
       </header>
 
       {/* Main Content Grid */}
-      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-        {/* Left Sidebar - Dispatch Log (collapsible, hidden on small) */}
-        <div className="hidden sm:flex flex-col col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-2 md:gap-4 p-2 md:p-4 overflow-hidden">
+        {/* Left Sidebar - Dispatch Log (collapsible) */}
+        <div className="flex flex-col lg:col-span-3 col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
           <button
             onClick={() => setIsLogExpanded(!isLogExpanded)}
             className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0 group"
@@ -249,7 +267,7 @@ export function WarRoomLayout() {
           </button>
 
           {isLogExpanded && (
-            <div className="flex-1 overflow-y-auto p-3 text-xs">
+            <div className="flex-1 overflow-y-auto p-3 text-xs max-h-[200px] lg:max-h-none">
               {/* History Timeline */}
               <div className="space-y-1 mb-3">
                 <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider flex items-center gap-1">
@@ -304,8 +322,8 @@ export function WarRoomLayout() {
         </div>
 
         {/* Center - Map (PRIMARY FOCAL POINT - LARGE) */}
-        <div className="lg:col-span-8 flex flex-col h-full min-h-0 overflow-hidden">
-          <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative group">
+        <div className="lg:col-span-7 flex flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
+          <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative group min-h-[300px] lg:min-h-0">
             <WarRoomMap scenario={currentScenario} />
 
             <motion.button
@@ -319,7 +337,7 @@ export function WarRoomLayout() {
           </div>
         </div>
 
-        {/* Right Sidebar - Unit Status (collapsible, hidden on small) */}
+        {/* Right Sidebar - Unit Status (collapsible) */}
         <div className="hidden lg:flex flex-col col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
           <button
             onClick={() => setIsStatusExpanded(!isStatusExpanded)}
