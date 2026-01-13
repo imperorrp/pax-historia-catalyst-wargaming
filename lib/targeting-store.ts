@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import type { CatalystOption, WarRoomScenario, AIGameResponse, Unit } from "./types"
-import { SCENARIOS } from "./mock-scenario"
+import { SCENARIOS } from "./mock-data/scenarios"
 import { hydrateScenarioLayout } from "./grid-engine/layout-solver"
 
 export type TargetingState = "idle" | "tactic_selected" | "unit_selected"

@@ -26,6 +26,36 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const [showLayerPanel, setShowLayerPanel] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
 
+  // Zoom and Pan State
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    // e.preventDefault(); // React synthetic events can't always prevent default passive listeners
+    const scaleSensitivity = 0.001
+    const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * scaleSensitivity), 4)
+    setTransform(prev => ({ ...prev, scale: newScale }))
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    setLastMousePos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    const dx = e.clientX - lastMousePos.x
+    const dy = e.clientY - lastMousePos.y
+    setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }))
+    setLastMousePos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
   // Hydration: One-time hydration on mount if needed
   useEffect(() => {
     if (!scenario.hexGrid) {
@@ -87,31 +117,57 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
            stroke: "#5d4037", strokeWidth: 2, roughness: 1.5, bowing: 2
         });
         
-        // Label
-        const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length
-        const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
+        /* Region Labels moved to HTML Overlay for better layering & positioning */
         
-        ctx.save();
-        ctx.fillStyle = "rgba(60, 40, 30, 0.5)";
-        ctx.font = "italic small-caps 28px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(region.name, centerX, centerY);
-        ctx.restore();
       })
 
-      // River Overlay (The 'Front')
-      const riverPath = [
-         [400, 0], [420, 100], [380, 200], [410, 300], [390, 400], [400, 600]
-      ] as [number, number][];
-      
-      rc.curve(riverPath, {
-        stroke: "#3498db", strokeWidth: 5, roughness: 1.1, bowing: 1.5
+      // Render region features (rivers, bridges, etc.)
+      scenario.mapRegions.forEach((region) => {
+        if (region.features) {
+          region.features.forEach((feature) => {
+            if ((feature as any).type === "river") {
+              // Draw river along the shared border between regions
+              const neighbors = scenario.mapRegions.filter(r => region.neighbors.includes(r.id));
+              if (neighbors.length > 0) {
+                // Simple river representation - could be enhanced
+                const riverPoints: [number, number][] = [];
+                // For now, draw a simple curved line through the region center
+                const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
+                const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
+                
+                // Create a winding river path
+                riverPoints.push([centerX - 50, centerY - 100]);
+                riverPoints.push([centerX - 20, centerY - 50]);
+                riverPoints.push([centerX + 10, centerY]);
+                riverPoints.push([centerX - 15, centerY + 50]);
+                riverPoints.push([centerX + 30, centerY + 100]);
+                
+                rc.curve(riverPoints, {
+                  stroke: "#3498db", 
+                  strokeWidth: 4, 
+                  roughness: 1.2, 
+                  bowing: 1.8
+                });
+              }
+            } else if ((feature as any).type === "bridge") {
+              // Draw bridge marker
+              const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
+              const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
+              
+              ctx.save();
+              ctx.fillStyle = "#8B4513";
+              ctx.fillRect(centerX - 15, centerY - 3, 30, 6);
+              ctx.fillStyle = "#654321";
+              ctx.fillRect(centerX - 12, centerY - 8, 24, 5);
+              ctx.restore();
+            }
+          });
+        }
       });
     }
 
-    // 3. Render Hex Grid
-    if (visibleLayers.grid && scenario.hexGrid) {
+    // 3. Render Hex Grid & Terrain
+    if (scenario.hexGrid) {
       scenario.hexGrid.forEach(hex => {
          // Use the single source of truth for geometry
          const cornersObj = getHexCorners({ x: hex.x, y: hex.y });
@@ -129,20 +185,32 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
             stroke = "rgba(50, 50, 50, 0.8)";
             strokeWidth = 2;
          } else if (hex.structure === 'city_block' || hex.terrain === 'urban_ruins') {
-            fill = "rgba(44, 62, 80, 0.3)";
+            // Urban areas should be clearly visible
+            fill = visibleLayers.terrain ? "rgba(44, 62, 80, 0.45)" : "rgba(255,255,255,0.0)";
             fillStyle = "cross-hatch";
-            stroke = "rgba(44, 62, 80, 0.4)";
-         } else if (hex.terrain === 'forest') {
-            fill = "rgba(34, 139, 34, 0.15)";
+            stroke = "rgba(44, 62, 80, 0.6)";
+         } else if (visibleLayers.terrain && hex.terrain === 'forest') {
+            // Make forests more visible with denser hachures and stronger stroke
+            fill = "rgba(34, 139, 34, 0.3)";
             fillStyle = "hachure";
-            stroke = "rgba(34, 139, 34, 0.3)";
-         } else if (hex.terrain === 'swamp') {
-            fill = "rgba(46, 204, 113, 0.1)";
+            stroke = "rgba(34, 139, 34, 0.5)";
+            strokeWidth = 1;
+         } else if (visibleLayers.terrain && hex.terrain === 'swamp') {
+            fill = "rgba(46, 204, 113, 0.18)";
             fillStyle = "dashed";
-         } else if (hex.infrastructure?.includes('river')) {
-            fill = "rgba(52, 152, 219, 0.3)";
-            fillStyle = "zigzag";
-            stroke = "rgba(52, 152, 219, 0.5)";
+            stroke = "rgba(34, 139, 34, 0.35)";
+         } else if (visibleLayers.terrain && hex.infrastructure?.includes('river')) {
+            // Rivers fill when terrain layer is on; otherwise keep transparent
+            fill = "rgba(52, 152, 219, 0.45)";
+            fillStyle = "solid";
+            stroke = "rgba(52, 152, 219, 0.65)";
+            strokeWidth = 1.2;
+         }
+
+         // If grid lines are hidden, mute stroke appearance
+         if (!visibleLayers.grid) {
+           stroke = 'rgba(0,0,0,0)';
+           strokeWidth = 0;
          }
 
          rc.polygon(corners, {
@@ -150,7 +218,9 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
             fillStyle: fillStyle,
             stroke: stroke,
             strokeWidth: strokeWidth,
-            roughness: 0.5
+            roughness: 0.5,
+            // For hachure-heavy fills, slightly tighten the gap for visual density
+            hachureGap: fillStyle === 'hachure' ? 6 : undefined
          });
       });
     }
@@ -422,27 +492,98 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         </motion.div>
       )}
 
-      {/* Unit Layer (HTML Overlay) */}
-      {visibleLayers.units && (
-         <div className="absolute inset-0 pointer-events-none z-10">
-            {scenario.units.map(unit => (
-               <div key={unit.id} className="pointer-events-auto absolute" style={{ width: 0, height: 0 }}>
-                  <UnitCounter unit={unit} />
-               </div>
-            ))}
-         </div>
-      )}
+      <div 
+        className="w-full h-full relative overflow-hidden bg-stone-100/50"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
+        <div 
+          style={{ 
+            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+            transformOrigin: '0 0',
+            width: scenario.mapDimensions.width,
+            height: scenario.mapDimensions.height,
+            background: '#F3E5AB'
+          }}
+          className="relative transition-transform duration-75 ease-out will-change-transform shadow-2xl"
+        >
+          {/* Unit Layer (HTML Overlay) */}
+          {visibleLayers.units && (
+             <div className="absolute inset-0 pointer-events-none z-10">
+                {scenario.units.map(unit => (
+                   <div key={unit.id} className="pointer-events-auto absolute" style={{ width: 0, height: 0 }}>
+                      <UnitCounter unit={unit} />
+                   </div>
+                ))}
+             </div>
+          )}
 
-      <canvas
-        ref={canvasRef}
-        className="block cursor-crosshair"
-        style={{
-          imageRendering: "auto",
-          boxShadow: "inset 0 1px 3px rgba(0,0,0,0.1)",
-          minWidth: scenario.mapDimensions.width,
-          minHeight: scenario.mapDimensions.height,
-        }}
-      />
+          {/* Region Label Layer (HTML Overlay - Z-Index 20) */}
+          {visibleLayers.regions && scenario.mapRegions.map(region => {
+             // Calculate best position for label (centroid of empty hexes)
+             const regionHexes = scenario.hexGrid?.filter(h => h.regionId === region.id) || [];
+             const occupiedKeys = new Set(scenario.units.map(u => u.hex ? `${u.hex.q},${u.hex.r}` : ""));
+             const emptyHexes = regionHexes.filter(h => !occupiedKeys.has(`${h.q},${h.r}`));
+             const candidates = emptyHexes.length > 0 ? emptyHexes : regionHexes;
+
+             let pos = { x: 0, y: 0 };
+             if (candidates.length > 0) {
+                 const sumX = candidates.reduce((s, h) => s + h.x, 0);
+                 const sumY = candidates.reduce((s, h) => s + h.y, 0);
+                 pos = { x: sumX / candidates.length, y: sumY / candidates.length };
+             } else {
+                 // Fallback to polygon centroid
+                 const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
+                 const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
+                 pos = { x: centerX, y: centerY };
+             }
+
+             return (
+               <div 
+                  key={region.id}
+                  className="absolute z-20 pointer-events-none flex items-center justify-center -translate-x-1/2 -translate-y-1/2 px-3 py-1 bg-[#fffcf5]/60 backdrop-blur-[1px] rounded-full shadow-sm border border-stone-400/30"
+                  style={{ left: pos.x, top: pos.y }}
+               >
+                  <span className="font-serif italic font-bold text-stone-800/80 whitespace-nowrap text-sm sm:text-base tracking-wide drop-shadow-sm">
+                    {region.name}
+                  </span>
+               </div>
+             )
+          })}
+
+          <canvas
+            ref={canvasRef}
+            className="block"
+            style={{
+              imageRendering: "auto",
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        </div>
+        
+        {/* Zoom Controls */}
+        <div className="absolute bottom-6 right-6 flex flex-col gap-2 bg-white/80 backdrop-blur rounded-lg shadow border border-stone-200 p-1">
+          <button 
+            onClick={() => setTransform(p => ({...p, scale: Math.min(4, p.scale + 0.2)}))}
+            className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold"
+          >+</button>
+          <div className="text-xs text-center text-stone-400 font-mono">{Math.round(transform.scale * 100)}%</div>
+          <button 
+            onClick={() => setTransform(p => ({...p, scale: Math.max(0.5, p.scale - 0.2)}))}
+            className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold"
+          >-</button>
+          <button 
+             onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
+             className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold text-xs"
+             title="Reset View"
+          >R</button>
+        </div>
+      </div>
 
       {/* Visual Action Legend Modal */}
       {showLegend && (

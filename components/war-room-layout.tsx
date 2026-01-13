@@ -7,7 +7,7 @@ import { UnitCounter } from "./unit-counter"
 import { CatalystCard } from "./catalyst-card"
 import { ScenarioSwitcher } from "./scenario-switcher"
 import { useTargetingStore } from "@/lib/targeting-store"
-import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind } from "lucide-react"
+import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target } from "lucide-react"
 import { reconcileStateChanges, getInitialPayload } from "@/lib/game-loop"
 
 export function WarRoomLayout() {
@@ -34,6 +34,9 @@ export function WarRoomLayout() {
   const [isMapMaximized, setIsMapMaximized] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const unitsSidebarRef = useRef<HTMLDivElement>(null)
+  const [isTacticalExpanded, setIsTacticalExpanded] = useState(true)
+
+  const isHistoricalView = historyIndex < history.length - 1
 
   // Auto-open units sidebar and scroll to selected unit
   useEffect(() => {
@@ -132,7 +135,11 @@ export function WarRoomLayout() {
           </h3>
           <div className="flex gap-3 justify-center flex-wrap max-h-28 overflow-y-auto">
             {currentScenario.options.map((option) => (
-              <CatalystCard key={option.id} option={option} />
+              <CatalystCard 
+                 key={option.id} 
+                 option={option}
+                 disabled={isHistoricalView} 
+              />
             ))}
           </div>
           {selectedTactic && (
@@ -153,47 +160,66 @@ export function WarRoomLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50 text-amber-900">
-      <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-6 py-4 flex-shrink-0">
+      <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-6 py-4 flex-shrink-0 relative">
+        {/* Historical View Safety Banner */}
+        {isHistoricalView && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-400 overflow-hidden">
+             <div className="w-full h-full bg-stripes-amber animate-slide"></div>
+          </div>
+        )}
+        
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+              {isHistoricalView ? (
+                 <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full border border-amber-200 shadow-inner">
+                    <Rewind className="w-4 h-4" />
+                    <span className="text-xs font-bold font-serif uppercase tracking-wider">Historical Record</span>
+                 </div>
+              ) : (
+                 <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.6)]" />
+              )}
+              
               <h1 className="font-serif text-xl font-bold text-amber-900">COMMAND CENTER</h1>
-              <div className="text-sm font-serif font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full">
+              <div className={`text-sm font-serif font-bold px-3 py-1 rounded-full transition-colors ${
+                 isHistoricalView 
+                   ? "bg-stone-200 text-stone-600 ring-1 ring-stone-300"
+                   : "bg-red-100 text-red-700 shadow-sm"
+              }`}>
                 ROUND {currentRound}
               </div>
               
               {/* History Navigation Controls */}
-              <div className="flex items-center gap-1 ml-2">
+              <div className="flex items-center gap-1 ml-4 bg-amber-900/5 p-1 rounded-lg border border-amber-900/5">
                 <button
                   onClick={goToPreviousRound}
                   disabled={historyIndex === 0 || isAnimating}
-                  className="p-1.5 rounded-md hover:bg-amber-900/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                   title="Previous Round"
                 >
-                  <ChevronLeft className="w-4 h-4 text-amber-700" />
+                  <ChevronLeft className="w-4 h-4 text-amber-900" />
                 </button>
+                <div className="px-2 text-xs font-mono font-bold text-amber-900/60 min-w-[3rem] text-center">
+                   {historyIndex + 1} / {history.length}
+                </div>
                 <button
                   onClick={goToNextRound}
                   disabled={historyIndex === history.length - 1 || isAnimating}
-                  className="p-1.5 rounded-md hover:bg-amber-900/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                   title="Next Round"
                 >
-                  <ChevronRight className="w-4 h-4 text-amber-700" />
+                  <ChevronRight className="w-4 h-4 text-amber-900" />
                 </button>
-                <span className="text-xs text-amber-700 ml-1 font-mono">
-                  {historyIndex + 1}/{history.length}
-                </span>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-amber-800/70">
+              <div className="hidden sm:block text-sm font-serif italic text-amber-800/70 border-r border-amber-900/10 pr-4">
                 {currentScenario.playerPolity} vs {currentScenario.enemyPolity}
               </div>
               <button
                 onClick={() => setIsHelpOpen(true)}
                 className="p-2 hover:bg-amber-900/10 rounded-lg transition-colors text-amber-800"
-                title="Help"
+                title="Help Guide"
               >
                 <HelpCircle className="w-5 h-5" />
               </button>
@@ -409,30 +435,58 @@ export function WarRoomLayout() {
         </div>
       </div>
 
-      {/* Tactical Hand - COMPACT, always visible */}
+      {/* Tactical Hand - Collapsible Panel */}
       <div className="border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0">
-        <div className="px-6 py-3 sm:py-4">
-          <h3 className="text-xs font-serif font-bold text-amber-900 mb-3 uppercase tracking-wider">
-            Tactical Options
-          </h3>
-          <div className="flex gap-3 justify-center flex-wrap max-h-32 overflow-y-auto pb-2">
-            {currentScenario.options.map((option) => (
-              <CatalystCard key={option.id} option={option} />
-            ))}
+        <button
+          onClick={() => setIsTacticalExpanded(!isTacticalExpanded)}
+          className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors w-full text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 flex-shrink-0 text-amber-700" />
+            <h2 className="font-serif font-bold text-sm text-amber-900">TACTICAL OPTIONS</h2>
           </div>
-
-          {selectedTactic && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={handleCommit}
-              className="w-full mt-3 py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white font-serif font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md hover:shadow-lg"
-            >
-              <Check className="w-4 h-4" />
-              CONFIRM & ADVANCE ROUND
-            </motion.button>
+          {isTacticalExpanded ? (
+            <ChevronUp className="w-4 h-4 text-amber-700" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-amber-700" />
           )}
-        </div>
+        </button>
+
+        <AnimatePresence>
+          {isTacticalExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 py-3 sm:py-4">
+                <div className="flex gap-3 justify-center flex-wrap max-h-32 overflow-y-auto pb-2">
+                  {currentScenario.options.map((option) => (
+                    <CatalystCard 
+                       key={option.id} 
+                       option={option} 
+                       disabled={isHistoricalView}
+                    />
+                  ))}
+                </div>
+
+                {selectedTactic && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleCommit}
+                    className="w-full mt-3 py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white font-serif font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md hover:shadow-lg"
+                  >
+                    <Check className="w-4 h-4" />
+                    CONFIRM & ADVANCE ROUND
+                  </motion.button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

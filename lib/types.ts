@@ -95,6 +95,8 @@ export type VisualActionType =
   | "SUPPRESS"
   | "SEVER_SUPPLY"
   | "FEINT"
+  | "AIRSTRIKE"
+  | "RECON"
 
 export interface VisualPlan {
   title: string

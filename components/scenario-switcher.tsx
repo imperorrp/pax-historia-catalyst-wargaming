@@ -1,7 +1,7 @@
 "use client"
 
 import { useTargetingStore } from "@/lib/targeting-store"
-import { SCENARIOS } from "@/lib/mock-scenario"
+import { SCENARIOS } from "@/lib/mock-data/scenarios"
 import { motion } from "framer-motion"
 import { MapPin } from "lucide-react"
 

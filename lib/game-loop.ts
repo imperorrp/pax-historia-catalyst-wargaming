@@ -1,5 +1,5 @@
 import type { AIGameResponse, GameLoopContext, WarRoomScenario, Location, Unit } from "./types"
-import { SAMPLE_PAYLOADS } from "./ai-payloads"
+import { SAMPLE_PAYLOADS } from "./mock-data/ai-payloads"
 import { resolveSemanticPosition } from "./geometry-utils"
 
 export function createGameLoopContext(scenario: WarRoomScenario, round: number, selectedTactic: any): GameLoopContext {

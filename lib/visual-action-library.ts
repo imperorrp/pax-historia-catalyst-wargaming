@@ -227,51 +227,6 @@ export function drawENCIRCLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
   ctx.globalAlpha = 1
 }
 
-export function drawBOMBARD({ ctx, from, to, opacity = 1 }: DrawingContext) {
-  ctx.globalAlpha = opacity * 0.7 // Faded for support action
-  ctx.fillStyle = "#e74c3c"
-  ctx.strokeStyle = "#c0392b"
-  ctx.lineWidth = 2
-
-  // Scatter starburst icons over target
-  const burstCount = 8
-  const radius = 40
-  for (let i = 0; i < burstCount; i++) {
-    const ang = (i / burstCount) * Math.PI * 2
-    const x = to.x + radius * Math.cos(ang)
-    const y = to.y + radius * Math.sin(ang)
-    drawStarburst(ctx, x, y, 8)
-  }
-
-  ctx.globalAlpha = 1
-}
-
-export function drawSUPPRESS({ ctx, from, to, opacity = 1 }: DrawingContext) {
-  const ang = angle(from, to)
-  const dist = distance(from, to)
-  const step = dist / 8
-
-  ctx.globalAlpha = opacity * 0.6
-  ctx.fillStyle = "rgba(231, 76, 60, 0.5)"
-
-  // Cone of fire dots
-  for (let i = 0; i < 8; i++) {
-    const x = from.x + Math.cos(ang) * i * step
-    const y = from.y + Math.sin(ang) * i * step
-    const spreadDots = 3
-    for (let j = 0; j < spreadDots; j++) {
-      const spreadAng = ang + (j - 1) * 0.3
-      const dotX = x + 15 * Math.cos(spreadAng)
-      const dotY = y + 15 * Math.sin(spreadAng)
-      ctx.beginPath()
-      ctx.arc(dotX, dotY, 2, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-
-  ctx.globalAlpha = 1
-}
-
 export function drawFORTIFY({ ctx, from, opacity = 1 }: DrawingContext) {
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#34495e"
@@ -382,10 +337,10 @@ function drawArrowHead(
 // Helper function to draw starburst (for BOMBARD)
 function drawStarburst(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
   ctx.beginPath()
-  const points = 8
-  for (let i = 0; i < points; i++) {
-    const ang = (i / points) * Math.PI * 2
-    const rx = i % 2 === 0 ? size : size / 2
+  const points = 12
+  for (let i = 0; i < points * 2; i++) {
+    const ang = (i / (points * 2)) * Math.PI * 2
+    const rx = i % 2 === 0 ? size : size * 0.4
     const px = x + rx * Math.cos(ang)
     const py = y + rx * Math.sin(ang)
     if (i === 0) ctx.moveTo(px, py)
@@ -394,6 +349,124 @@ function drawStarburst(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.closePath()
   ctx.stroke()
   ctx.fill()
+}
+
+export function drawBOMBARD({ ctx, to, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = "rgba(231, 76, 60, 0.4)"
+  ctx.strokeStyle = "#c0392b"
+  ctx.lineWidth = 3
+  
+  drawStarburst(ctx, to.x, to.y, 45)
+  
+  // Scorch marks
+  ctx.fillStyle = "rgba(44, 62, 80, 0.6)"
+  ctx.beginPath()
+  ctx.arc(to.x + 10, to.y + 10, 8, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(to.x - 12, to.y - 5, 6, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.globalAlpha = 1
+}
+
+export function drawAIRSTRIKE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity
+  const ang = angle(from, to)
+  
+  // Plane/Flight Path silhouette
+  ctx.strokeStyle = "rgba(44, 62, 80, 0.2)"
+  ctx.lineWidth = 40
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+  
+  // Explosion at target
+  ctx.fillStyle = "rgba(230, 126, 34, 0.6)"
+  ctx.strokeStyle = "#d35400"
+  ctx.lineWidth = 3
+  drawStarburst(ctx, to.x, to.y, 60)
+  
+  // Plane icon at midpoint (simplified)
+  const midX = (from.x + to.x) / 2
+  const midY = (from.y + to.y) / 2
+  ctx.save()
+  ctx.translate(midX, midY)
+  ctx.rotate(ang)
+  ctx.fillStyle = "#2c3e50"
+  ctx.beginPath()
+  ctx.moveTo(15, 0)
+  ctx.lineTo(-10, 15)
+  ctx.lineTo(-5, 5)
+  ctx.lineTo(-20, 0)
+  ctx.lineTo(-5, -5)
+  ctx.lineTo(-10, -15)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+  
+  ctx.globalAlpha = 1
+}
+
+export function drawRECON({ ctx, to, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#3498db"
+  ctx.lineWidth = 2
+  ctx.setLineDash([4, 4])
+  
+  // Concentric radar rings
+  for(let r = 10; r <= 80; r += 20) {
+     ctx.beginPath()
+     ctx.arc(to.x, to.y, r, 0, Math.PI*2)
+     ctx.stroke()
+  }
+  
+  ctx.setLineDash([])
+  // Crosshair
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(to.x - 90, to.y)
+  ctx.lineTo(to.x + 90, to.y)
+  ctx.moveTo(to.x, to.y - 90)
+  ctx.lineTo(to.x, to.y + 90)
+  ctx.stroke()
+
+  ctx.globalAlpha = 1
+}
+
+export function drawSUPPRESS({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+  const dist = distance(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = "rgba(231, 76, 60, 0.6)"
+  
+  // Cone of fire
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x + 40 * Math.cos(ang + 0.3), to.y + 40 * Math.sin(ang + 0.3))
+  ctx.lineTo(to.x + 40 * Math.cos(ang - 0.3), to.y + 40 * Math.sin(ang - 0.3))
+  ctx.closePath()
+  
+  const grad = ctx.createRadialGradient(from.x, from.y, 10, to.x, to.y, 60)
+  grad.addColorStop(0, "rgba(231, 76, 60, 0)")
+  grad.addColorStop(1, "rgba(231, 76, 60, 0.4)")
+  ctx.fillStyle = grad
+  ctx.fill()
+
+  // Impact dots
+  ctx.fillStyle = "#e74c3c"
+  for (let i = 0; i < 8; i++) {
+    const r = Math.random() * 30
+    const a = Math.random() * Math.PI * 2
+    ctx.beginPath()
+    ctx.arc(to.x + r * Math.cos(a), to.y + r * Math.sin(a), 3, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  
+  ctx.globalAlpha = 1
 }
 
 export function drawUnitStatus(
@@ -523,6 +596,8 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
     SUPPRESS: drawSUPPRESS,
     SEVER_SUPPLY: drawAMBUSH, // Scissors icon
     FEINT: drawRETREAT, // Phantom arrow
+    AIRSTRIKE: drawAIRSTRIKE,
+    RECON: drawRECON,
   }
 
   const renderer = renderers[action]
