@@ -248,9 +248,205 @@ export function WarRoomLayout() {
       </header>
 
       {/* Main Content Grid */}
-      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-2 md:gap-4 p-2 md:p-4 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-3 p-3 md:p-4 overflow-y-auto lg:overflow-hidden">
+        
+        {/* MOBILE LAYOUT: Vertical Stack */}
+        {/* Map Section - Visible on mobile first */}
+        <div className="lg:hidden flex flex-col bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative touch-none" style={{ height: '400px', flexShrink: 0 }}>
+          <WarRoomMap scenario={currentScenario} />
+        </div>
+
+        {/* MOBILE: Tactical Options - No scrolling, full content */}
+        <div className="lg:hidden border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0 rounded-lg">
+          <div className="flex items-center justify-between gap-2 p-3 border-b border-amber-900/10 bg-amber-900/5">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 flex-shrink-0 text-amber-700" />
+              <h2 className="font-serif font-bold text-sm text-amber-900">TACTICAL OPTIONS</h2>
+            </div>
+          </div>
+          <div className="px-3 py-3">
+            <div className="flex gap-2 justify-start flex-wrap">
+              {currentScenario.options.map((option) => (
+                <CatalystCard 
+                   key={option.id} 
+                   option={option} 
+                   disabled={isHistoricalView}
+                />
+              ))}
+            </div>
+            {selectedTactic && (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={handleCommit}
+                disabled={isAnimating}
+                className="w-full mt-3 py-2.5 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-serif font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md"
+              >
+                <Check className="w-4 h-4" />
+                CONFIRM & ADVANCE ROUND
+              </motion.button>
+            )}
+          </div>
+        </div>
+
+        {/* MOBILE: Dispatch Log with min-height and scroll */}
+        <div className="lg:hidden flex flex-col bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm flex-shrink-0">
+          <div className="flex items-center justify-between gap-2 p-3 border-b border-amber-900/10 bg-amber-900/5">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 flex-shrink-0 text-amber-700" />
+              <h2 className="font-serif font-bold text-sm text-amber-900">DISPATCH LOG</h2>
+            </div>
+          </div>
+
+          <div className="overflow-y-auto p-3 text-xs" style={{ minHeight: '200px', maxHeight: '300px' }}>
+                  {/* History Timeline */}
+                  <div className="space-y-1 mb-3">
+                    <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider flex items-center gap-1">
+                      <Rewind className="w-3 h-3" />
+                      History
+                    </div>
+                    {history.map((entry, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => jumpToRound(idx)}
+                        className={`w-full text-left py-1.5 px-2.5 rounded border-l-2 transition-all ${
+                          idx === historyIndex
+                            ? "bg-amber-600/20 border-amber-600 text-amber-900 font-semibold"
+                            : "bg-amber-50/40 border-amber-600/40 text-amber-900/70 hover:bg-amber-100/60"
+                        }`}
+                      >
+                        <div className="font-mono text-xs">R{entry.round}</div>
+                        {entry.tacticUsed && (
+                          <div className="text-xs opacity-75 truncate">{entry.tacticUsed.title}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Regular Logs */}
+                  <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider">
+                    Dispatch Log
+                  </div>
+                  <div className="space-y-2 font-mono text-amber-800/80">
+                    <AnimatePresence mode="popLayout">
+                      {logs.map((log, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0 }}
+                          className={`py-1.5 px-2.5 rounded border-l-2 transition-all ${
+                            log.round === currentRound
+                              ? "bg-amber-200/60 border-amber-600 text-amber-950 font-semibold shadow-sm"
+                              : log.round === currentRound - 1
+                              ? "bg-amber-100/50 border-amber-500 text-amber-900/90"
+                              : "bg-amber-50/40 border-amber-600/40 text-amber-900/70"
+                          }`}
+                        >
+                          {log.text}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+        </div>
+
+        {/* MOBILE: Units Panel - Always visible on mobile */}
+        <div className="lg:hidden flex flex-col bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm flex-shrink-0 mb-4">
+          <div className="flex items-center justify-between gap-2 p-3 border-b border-amber-900/10 bg-amber-900/5">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 flex-shrink-0 text-amber-700" />
+              <h2 className="font-serif font-bold text-sm text-amber-900">UNITS</h2>
+            </div>
+          </div>
+
+          <div className="overflow-y-auto space-y-2 p-3" style={{ maxHeight: '400px' }}>
+                  {currentScenario.units.map((unit) => {
+                    const isSelected = selectedUnit?.id === unit.id
+                    return (
+                      <motion.div
+                        key={unit.id}
+                        data-unit-id={unit.id}
+                        onClick={() => useTargetingStore.getState().selectUnit(unit)}
+                        className={`
+                          p-3 rounded-lg text-xs border-l-4 transition-all font-serif relative cursor-pointer
+                          ${isSelected 
+                            ? 'ring-2 ring-amber-400 ring-offset-1 shadow-lg bg-gradient-to-r' 
+                            : 'hover:bg-amber-50/30'
+                          }
+                          ${
+                            unit.owner === "player"
+                              ? `border-blue-500 ${isSelected ? 'from-blue-100 to-blue-50' : 'bg-blue-50/50'} text-blue-900`
+                              : `border-red-500 ${isSelected ? 'from-red-100 to-red-50' : 'bg-red-50/50'} text-red-900`
+                          }
+                        `}
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center"
+                          >
+                            <div className="w-2 h-2 bg-white rounded-full" />
+                          </motion.div>
+                        )}
+
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`
+                              w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                              ${unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"}
+                            `}>
+                              {unit.type === 'infantry' ? '⊠' : 
+                               unit.type === 'armor' ? '◯' : 
+                               unit.type === 'cavalry' ? '∇' : '⚡'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-sm leading-tight">{unit.name}</div>
+                              <div className="text-xs opacity-75 capitalize">{unit.type}</div>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
+                            unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"
+                          }`}>
+                            {unit.owner === "player" ? currentScenario.playerPolity : currentScenario.enemyPolity}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {unit.tags.slice(0, 2).map((tag, idx) => (
+                            <span key={idx} className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                              {tag}
+                            </span>
+                          ))}
+                          {unit.tags.length > 2 && (
+                            <span className="text-[10px] text-amber-600">+{unit.tags.length - 2}</span>
+                          )}
+                        </div>
+
+                        {unit.status && (
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              unit.status === 'fresh' ? 'bg-green-500' :
+                              unit.status === 'engaged' ? 'bg-orange-500' :
+                              unit.status === 'wavering' ? 'bg-red-500' : 'bg-gray-500'
+                            }`} />
+                            <span className="text-xs opacity-80 uppercase tracking-wider">
+                              {unit.status}
+                            </span>
+                          </div>
+                        )}
+                      </motion.div>
+                    )
+                  })}
+                </div>
+        </div>
+
+        {/* DESKTOP LAYOUT: Original 3-column grid */}
         {/* Left Sidebar - Dispatch Log (collapsible) */}
-        <div className="flex flex-col lg:col-span-3 col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
+        <div className="hidden lg:flex flex-col lg:col-span-3 col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
           <button
             onClick={() => setIsLogExpanded(!isLogExpanded)}
             className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0 group"
@@ -267,7 +463,7 @@ export function WarRoomLayout() {
           </button>
 
           {isLogExpanded && (
-            <div className="flex-1 overflow-y-auto p-3 text-xs max-h-[200px] lg:max-h-none">
+            <div className="flex-1 overflow-y-auto p-3 text-xs">
               {/* History Timeline */}
               <div className="space-y-1 mb-3">
                 <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider flex items-center gap-1">
@@ -322,7 +518,7 @@ export function WarRoomLayout() {
         </div>
 
         {/* Center - Map (PRIMARY FOCAL POINT - LARGE) */}
-        <div className="lg:col-span-7 flex flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
+        <div className="hidden lg:flex lg:col-span-7 flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
           <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative group min-h-[300px] lg:min-h-0">
             <WarRoomMap scenario={currentScenario} />
 
@@ -453,8 +649,8 @@ export function WarRoomLayout() {
         </div>
       </div>
 
-      {/* Tactical Hand - Collapsible Panel */}
-      <div className="border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0">
+      {/* Tactical Hand - Collapsible Panel (Desktop Only) */}
+      <div className="hidden lg:block border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0">
         <button
           onClick={() => setIsTacticalExpanded(!isTacticalExpanded)}
           className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors w-full text-left"

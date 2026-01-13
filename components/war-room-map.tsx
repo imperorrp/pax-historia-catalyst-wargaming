@@ -30,10 +30,10 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const [isDragging, setIsDragging] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
+  const [lastPinchDist, setLastPinchDist] = useState<number | null>(null)
 
   const handleWheel = (e: React.WheelEvent) => {
     e.stopPropagation();
-    // e.preventDefault(); // React synthetic events can't always prevent default passive listeners
     const scaleSensitivity = 0.001
     const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * scaleSensitivity), 4)
     setTransform(prev => ({ ...prev, scale: newScale }))
@@ -54,6 +54,51 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
   const handleMouseUp = () => {
     setIsDragging(false)
+  }
+
+  // Touch handlers for mobile drag support
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault()
+    if (e.touches.length === 1) {
+      setIsDragging(true)
+      setLastMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+    } else if (e.touches.length === 2) {
+      // Pinch to zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      setLastPinchDist(dist)
+      setIsDragging(false)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault()
+    
+    if (e.touches.length === 1 && isDragging) {
+      // Single finger drag
+      const dx = e.touches[0].clientX - lastMousePos.x
+      const dy = e.touches[0].clientY - lastMousePos.y
+      setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }))
+      setLastMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+    } else if (e.touches.length === 2 && lastPinchDist !== null) {
+      // Pinch zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      const delta = dist - lastPinchDist
+      const scaleSensitivity = 0.01
+      const newScale = Math.min(Math.max(0.5, transform.scale + delta * scaleSensitivity), 4)
+      setTransform(prev => ({ ...prev, scale: newScale }))
+      setLastPinchDist(dist)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+    setLastPinchDist(null)
   }
 
   // Hydration: One-time hydration on mount if needed
@@ -493,13 +538,16 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       )}
 
       <div 
-        className="w-full h-full relative overflow-hidden bg-stone-100/50"
+        className="w-full h-full relative overflow-hidden bg-stone-100/50 touch-none"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       >
         <div 
           style={{ 
