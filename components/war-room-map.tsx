@@ -15,6 +15,109 @@ interface WarRoomMapProps {
   scenario: WarRoomScenario
 }
 
+// Helper Functions for Scatter Props and Rivers
+function getBoundingBox(points: [number, number][]): { minX: number; maxX: number; minY: number; maxY: number } {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  points.forEach(([x, y]) => {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  });
+  return { minX, maxX, minY, maxY };
+}
+
+function isPointInPolygon(point: { x: number; y: number }, polygon: [number, number][]): boolean {
+  const { x, y } = point;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function drawScatterProps(rc: any, points: [number, number][], terrain: string) {
+  const bounds = getBoundingBox(points);
+  const area = (bounds.maxX - bounds.minX) * (bounds.maxY - bounds.minY);
+  const density = 0.0003; // Adjust based on visual density
+  const count = Math.floor(area * density);
+
+  for (let i = 0; i < count; i++) {
+    const rx = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+    const ry = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
+
+    // Check if random point is actually inside the region
+    if (isPointInPolygon({ x: rx, y: ry }, points)) {
+      if (terrain === 'forest') {
+        // Draw stylized pine tree
+        rc.line(rx, ry, rx - 3, ry + 8, { stroke: '#2e7d32', strokeWidth: 1 });
+        rc.line(rx, ry, rx + 3, ry + 8, { stroke: '#2e7d32', strokeWidth: 1 });
+        rc.line(rx - 3, ry + 8, rx + 3, ry + 8, { stroke: '#2e7d32', strokeWidth: 1 });
+      } else if (terrain === 'mountain') {
+        // Draw mountain peak
+        rc.path(`M ${rx} ${ry} L ${rx + 8} ${ry - 12} L ${rx + 16} ${ry}`, { stroke: '#5d4037', strokeWidth: 1 });
+      } else if (terrain === 'river' || terrain === 'water') {
+        // Draw water ripples
+        rc.curve([[rx, ry], [rx + 3, ry + 1], [rx + 6, ry]], { stroke: '#2980b9', strokeWidth: 0.5 });
+      } else if (terrain === 'swamp' || terrain === 'mud') {
+        // Draw mud splatters
+        rc.circle(rx, ry, 2 + Math.random() * 3, { fill: '#3e2723', fillStyle: 'solid', roughness: 2 });
+      }
+    }
+  }
+}
+
+function drawRiver(rc: any, regions: any[], river: any) {
+  // Find shared edges between regions in the river path
+  const riverSegments: [number, number][][] = [];
+
+  for (let i = 0; i < river.pathNodes.length - 1; i++) {
+    const regionA = regions.find(r => r.id === river.pathNodes[i]);
+    const regionB = regions.find(r => r.id === river.pathNodes[i + 1]);
+
+    if (regionA && regionB) {
+      // Find shared edges (simplified - in practice you'd need proper edge detection)
+      const sharedEdges = findSharedEdges(regionA.points, regionB.points);
+      if (sharedEdges.length > 0) {
+        riverSegments.push(...sharedEdges);
+      }
+    }
+  }
+
+  // Draw river segments
+  riverSegments.forEach(segment => {
+    if (segment.length >= 2) {
+      rc.path(`M ${segment[0][0]} ${segment[0][1]} L ${segment[1][0]} ${segment[1][1]}`, {
+        stroke: '#2980b9',
+        strokeWidth: river.width || 6,
+        roughness: 1
+      });
+    }
+  });
+}
+
+function findSharedEdges(pointsA: [number, number][], pointsB: [number, number][]): [number, number][][] {
+  // Simplified edge sharing detection - in a full implementation you'd use proper geometric algorithms
+  // For now, return a sample edge for demonstration
+  const boundsA = getBoundingBox(pointsA);
+  const boundsB = getBoundingBox(pointsB);
+
+  // Find approximate shared boundary
+  const sharedX = Math.max(boundsA.minX, boundsB.minX) + (Math.min(boundsA.maxX, boundsB.maxX) - Math.max(boundsA.minX, boundsB.minX)) / 2;
+  const startY = Math.max(boundsA.minY, boundsB.minY);
+  const endY = Math.min(boundsA.maxY, boundsB.maxY);
+
+  if (startY < endY) {
+    return [[[sharedX, startY], [sharedX, endY]]];
+  }
+
+  return [];
+}
+
 export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -25,6 +128,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const historyIndex = useTargetingStore((s) => s.historyIndex)
   const [showLayerPanel, setShowLayerPanel] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
+  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null); // NEW STATE
 
   // Zoom and Pan State
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
@@ -143,71 +247,120 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
     ctx.putImageData(imageData, 0, 0)
 
-    // 2. Render Regions
+    // 2. Render Regions (With better colors and scatter props!)
     if (visibleLayers.regions) {
       scenario.mapRegions.forEach((region) => {
-        // Fill
-        ctx.beginPath();
-        ctx.moveTo(region.points[0][0], region.points[0][1]);
-        for(let i=1; i<region.points.length; i++) ctx.lineTo(region.points[i][0], region.points[i][1]);
-        ctx.closePath();
+        const isHovered = hoveredRegion === region.id;
         
-        ctx.fillStyle = region.id === 'region-1' 
-          ? "rgba(100, 149, 237, 0.1)" // Blue tint
-          : "rgba(139, 69, 19, 0.1)"; // Brown tint
-        ctx.fill();
+        // Determine Style based on Terrain + Hover State
+        let fill = "rgba(139, 69, 19, 0.05)"; // Default ground
+        let stroke = "#8d6e63";
+        let fillStyle = "solid";
+        let strokeWidth = 1.5;
+        let roughness = 1;
+        let bowing = 1;
 
-        // Border (Rough)
-        rc.polygon(region.points, {
-           stroke: "#5d4037", strokeWidth: 2, roughness: 1.5, bowing: 2
-        });
-        
-        /* Region Labels moved to HTML Overlay for better layering & positioning */
-        
-      })
-
-      // Render region features (rivers, bridges, etc.)
-      scenario.mapRegions.forEach((region) => {
-        if (region.features) {
-          region.features.forEach((feature) => {
-            if ((feature as any).type === "river") {
-              // Draw river along the shared border between regions
-              const neighbors = scenario.mapRegions.filter(r => region.neighbors.includes(r.id));
-              if (neighbors.length > 0) {
-                // Simple river representation - could be enhanced
-                const riverPoints: [number, number][] = [];
-                // For now, draw a simple curved line through the region center
-                const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
-                const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
-                
-                // Create a winding river path
-                riverPoints.push([centerX - 50, centerY - 100]);
-                riverPoints.push([centerX - 20, centerY - 50]);
-                riverPoints.push([centerX + 10, centerY]);
-                riverPoints.push([centerX - 15, centerY + 50]);
-                riverPoints.push([centerX + 30, centerY + 100]);
-                
-                rc.curve(riverPoints, {
-                  stroke: "#3498db", 
-                  strokeWidth: 4, 
-                  roughness: 1.2, 
-                  bowing: 1.8
-                });
-              }
-            } else if ((feature as any).type === "bridge") {
-              // Draw bridge marker
-              const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
-              const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
-              
-              ctx.save();
-              ctx.fillStyle = "#8B4513";
-              ctx.fillRect(centerX - 15, centerY - 3, 30, 6);
-              ctx.fillStyle = "#654321";
-              ctx.fillRect(centerX - 12, centerY - 8, 24, 5);
-              ctx.restore();
-            }
-          });
+        switch (region.terrain) {
+          case 'river':
+            // More distinct Blue, less scratchy
+            fill = isHovered ? "rgba(33, 150, 243, 0.6)" : "rgba(33, 150, 243, 0.4)"; 
+            stroke = "rgba(33, 150, 243, 0.3)"; // Faint blue border
+            fillStyle = "solid"; // Solid water looks better than scratchy zigzag
+            roughness = 0.5; // Smooth water
+            bowing = 0.2;
+            break;
+          case 'forest':
+            fill = isHovered ? "rgba(56, 142, 60, 0.35)" : "rgba(56, 142, 60, 0.25)";
+            stroke = "#2e7d32";
+            fillStyle = "cross-hatch";
+            roughness = 1.2;
+            break;
+          case 'mountain':
+            fill = isHovered ? "rgba(117, 117, 117, 0.4)" : "rgba(117, 117, 117, 0.3)";
+            stroke = "#424242";
+            fillStyle = "hachure";
+            roughness = 1.5;
+            break;
+          case 'swamp':
+          case 'mud':
+            fill = isHovered ? "rgba(101, 67, 33, 0.45)" : "rgba(78, 52, 46, 0.35)";
+            stroke = "#3e2723";
+            fillStyle = "dots"; // Muddy texture
+            break;
+          case 'urban':
+            fill = isHovered ? "rgba(100, 100, 100, 0.35)" : "rgba(100, 100, 100, 0.25)";
+            stroke = "#000";
+            fillStyle = "solid";
+            break;
         }
+
+        // Highlight Override
+        if (isHovered && region.terrain !== 'river') {
+            strokeWidth = 2; // Reduced from 3
+        }
+
+        // Draw the region background
+        if (region.subPolygons && region.subPolygons.length > 0) {
+           // OVERRIDE: Use faint strokes for sub-polygons so they are visible but not "Bold"
+           // Use the determined stroke color but with much lower opacity if it wasn't already faint
+           let shardStroke = stroke;
+           if (!shardStroke.startsWith("rgba")) {
+              // Convert hex to faint rgba - cheating a bit by just using a standard shadow color
+              shardStroke = "rgba(0,0,0,0.1)"; 
+              if (region.terrain === 'river') shardStroke = "rgba(33, 150, 243, 0.2)";
+           }
+           
+           const shardWidth = 0.5; // Fine line
+
+           // Painter's Algorithm Mode
+           region.subPolygons.forEach((poly: any) => {
+               rc.polygon(poly, {
+                 fill, 
+                 stroke: shardStroke, 
+                 strokeWidth: shardWidth, 
+                 fillStyle, 
+                 fillWeight: 0.5, // Lighter internal fill pattern
+                 roughness: 0.4 // Very clean internal lines
+               });
+           });
+
+           // OPTIONAL: Highlight border on Hover to show region extent
+           // IMPROVED: Draw the OUTER BOUNDARY (Hull) strongly, and internal cells faintly
+           if (isHovered) {
+              // 1. Draw Outer Boundary (Hull)
+              rc.polygon(region.points, {
+                 fill: 'none', 
+                 stroke: region.terrain === 'river' ? '#1976D2' : '#d84315', 
+                 strokeWidth: 2,
+                 roughness: 1
+              });
+           }
+
+           // Draw Scatter Props on sub-polygons
+           if (visibleLayers.terrain) {
+             region.subPolygons.forEach((poly: any) => {
+                drawScatterProps(rc, poly, region.terrain || 'plains');
+             });
+           }
+
+        } else {
+           // Legacy / Simple Voronoi Mode
+           rc.polygon(region.points, {
+              fill, stroke, strokeWidth, roughness, bowing, fillStyle, fillWeight: 1
+           });
+
+           // NEW: Draw Scatter Props based on terrain
+           if (visibleLayers.terrain) {
+             drawScatterProps(rc, region.points, region.terrain || 'plains');
+           }
+        }
+      })
+    }
+
+    // NEW: Render Rivers as Border Features
+    if (scenario.rivers && visibleLayers.terrain) {
+      scenario.rivers.forEach(river => {
+        drawRiver(rc, scenario.mapRegions, river);
       });
     }
 
@@ -295,58 +448,80 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       });
     }
 
-    // 5. Render Tactical Actions (When Tactic Selected)
-    // For historical rounds: show the tactic that was selected and executed in that round
-    // For current round: show the tactic currently selected (if any), or none if not selected yet
+    // 5. Render Tactical Actions (Logic Updated)
     const isHistorical = historyIndex < history.length - 1
     const tacticToDisplay = isHistorical ? history[historyIndex]?.tacticUsed : selectedTactic
-    console.debug('[render] tacticToDisplay', tacticToDisplay?.id ?? null, 'selectedTactic', selectedTactic?.id ?? null, 'isHistorical', isHistorical, 'historyIndex', historyIndex, 'historyLen', history.length, 'tacticUsed', history[historyIndex]?.tacticUsed?.id ?? null)
-    console.debug('[render] visibleLayers.units', visibleLayers.units, 'scenario.hexGrid exists', !!scenario.hexGrid, 'scenario.units.length', scenario.units.length)
+
     if (tacticToDisplay && visibleLayers.units) {
-      console.debug('[render] Rendering visual action for tactic', tacticToDisplay.id)
       const playerUnits = scenario.units.filter((u) => u.owner === "player")
       const enemyUnits = scenario.units.filter((u) => u.owner === "enemy")
-      console.debug('[render] playerUnits count', playerUnits.length, 'enemyUnits count', enemyUnits.length)
 
       if (playerUnits.length > 0 && enemyUnits.length > 0) {
-        playerUnits.forEach((playerUnit) => {
-          // Look up player unit position in hexGrid
-          if (!playerUnit.hex) return;
-          const pKey = `${playerUnit.hex.q},${playerUnit.hex.r}`;
-          const playerHexData = scenario.hexIndex?.[pKey] ?? scenario.hexGrid?.find(h => h.q === playerUnit.hex!.q && h.r === playerUnit.hex!.r);
-          if (!playerHexData) return;
-          const fromLoc = { x: playerHexData.x, y: playerHexData.y };
+        
+        // Calculate Enemy Centroid for 'center_mass' logic
+        const enemyCentroid = {
+           x: enemyUnits.reduce((sum, u) => sum + (getUnitPixel(u)?.x || 0), 0) / enemyUnits.length,
+           y: enemyUnits.reduce((sum, u) => sum + (getUnitPixel(u)?.y || 0), 0) / enemyUnits.length
+        }
 
-          // Find nearest enemy unit
-          let nearestEnemy = null;
-          let minDist = Infinity;
+        // Sort enemies by X coordinate for Flank logic
+        const enemiesSortedX = [...enemyUnits].sort((a,b) => (getUnitPixel(a)?.x||0) - (getUnitPixel(b)?.x||0));
+
+        playerUnits.forEach((playerUnit) => {
+          // Check if this unit type is relevant for the tactic
+          if (tacticToDisplay.requiredUnitTypes && !tacticToDisplay.requiredUnitTypes.includes(playerUnit.type)) {
+             return; 
+          }
+
+          const fromLoc = getUnitPixel(playerUnit);
+          if (!fromLoc) return;
+
+          let targetLoc = null;
+
+          // --- SMART TARGETING LOGIC ---
+          switch(tacticToDisplay.targetLogic) {
+             case "center_mass":
+                targetLoc = enemyCentroid;
+                break;
+             case "flank_left":
+                // Target enemy's rightmost unit (Player's left perspective usually, or absolute map left?)
+                // Let's assume Map Left = Low X.
+                targetLoc = getUnitPixel(enemiesSortedX[0]); // Leftmost enemy
+                break;
+             case "flank_right":
+                targetLoc = getUnitPixel(enemiesSortedX[enemiesSortedX.length-1]); // Rightmost enemy
+                break;
+             case "specific_region":
+                if (tacticToDisplay.targetRegionId) {
+                   const r = scenario.mapRegions.find(r => r.id === tacticToDisplay.targetRegionId);
+                   if (r) {
+                      // rough centroid
+                      const cx = r.points.reduce((s,p)=>s+p[0],0)/r.points.length;
+                      const cy = r.points.reduce((s,p)=>s+p[1],0)/r.points.length;
+                      targetLoc = {x:cx, y:cy};
+                   }
+                }
+                break;
+             case "nearest":
+             default:
+                // Find nearest enemy (Classic logic)
+                let minDist = Infinity;
+                enemyUnits.forEach(e => {
+                   const eLoc = getUnitPixel(e);
+                   if(!eLoc) return;
+                   const d = (eLoc.x-fromLoc.x)**2 + (eLoc.y-fromLoc.y)**2;
+                   if(d < minDist) { minDist = d; targetLoc = eLoc; }
+                });
+                break;
+          }
           
-          enemyUnits.forEach((enemyUnit) => {
-            if (!enemyUnit.hex) return;
-            const eKey = `${enemyUnit.hex.q},${enemyUnit.hex.r}`;
-            const enemyHexData = scenario.hexIndex?.[eKey] ?? scenario.hexGrid?.find(h => h.q === enemyUnit.hex!.q && h.r === enemyUnit.hex!.r);
-            if (!enemyHexData) return;
-            const enemyLoc = { x: enemyHexData.x, y: enemyHexData.y };            
-            const dx = enemyLoc.x - fromLoc.x;
-            const dy = enemyLoc.y - fromLoc.y;
-            const dist = dx*dx + dy*dy;
-            
-            if (dist < minDist) {
-              minDist = dist;
-              nearestEnemy = enemyLoc;
-            }
-          });
-          
-          if (nearestEnemy) {
-            console.debug('[render] Drawing visual action from', fromLoc, 'to', nearestEnemy, 'for tactic', tacticToDisplay.id)
+          if (targetLoc) {
             renderVisualAction(tacticToDisplay.semanticAction as any, {
               ctx,
               from: fromLoc,
-              to: nearestEnemy,
-              opacity: 1.0,
+              to: targetLoc,
+              opacity: 0.8,
             });
-          } else {
-            console.debug('[render] No nearest enemy found for player unit', playerUnit.id)
           }
         });
       }
@@ -464,7 +639,91 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
 
     setIsRendered(true)
-  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers]) // Fixed dep array to prevent rerenders
+  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers, hoveredRegion]) // Fixed dep array to prevent rerenders
+
+  // --- IMPROVED LABEL RENDERING WITH VORONOI CENTROIDS ---
+  const renderLabels = () => {
+    if (!visibleLayers.regions) return null;
+
+    // Use centroids from Voronoi generator for better positioning
+    const positions = scenario.mapRegions.map(region => {
+       // Use stored centroid if available, otherwise calculate
+       const cx = region.centroid?.x ?? region.points.reduce((s,p)=>s+p[0],0)/region.points.length;
+       const cy = region.centroid?.y ?? region.points.reduce((s,p)=>s+p[1],0)/region.points.length;
+       return { id: region.id, name: region.name, x: cx, y: cy };
+    });
+
+    // Enhanced collision avoidance with force-directed positioning
+    const iterations = 20;
+    const minSeparation = 120; // Minimum pixel distance between labels
+
+    for (let iter = 0; iter < iterations; iter++) {
+      let hasCollisions = false;
+
+      for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+          const dx = positions[i].x - positions[j].x;
+          const dy = positions[i].y - positions[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+          if (dist < minSeparation) {
+            hasCollisions = true;
+            const force = (minSeparation - dist) / dist * 2; // Repulsion strength
+            const fx = dx * force;
+            const fy = dy * force;
+
+            // Push labels apart
+            positions[i].x += fx;
+            positions[i].y += fy;
+            positions[j].x -= fx;
+            positions[j].y -= fy;
+
+            // Keep labels within map bounds
+            const margin = 50;
+            positions[i].x = Math.max(margin, Math.min(scenario.mapDimensions.width - margin, positions[i].x));
+            positions[i].y = Math.max(margin, Math.min(scenario.mapDimensions.height - margin, positions[i].y));
+            positions[j].x = Math.max(margin, Math.min(scenario.mapDimensions.width - margin, positions[j].x));
+            positions[j].y = Math.max(margin, Math.min(scenario.mapDimensions.height - margin, positions[j].y));
+          }
+        }
+      }
+
+      // Early exit if no collisions found
+      if (!hasCollisions) break;
+    }
+
+    return (
+      <div className="absolute inset-0 pointer-events-none z-20">
+        {positions.map(pos => (
+           <div 
+              key={pos.id}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer"
+              style={{ left: pos.x, top: pos.y }}
+              onMouseEnter={() => setHoveredRegion(pos.id)}
+              onMouseLeave={() => setHoveredRegion(null)}
+           >
+              {/* Dot Anchor and Label Container */}
+              <div className={`
+                 transition-all duration-200 flex flex-col items-center
+                 ${hoveredRegion === pos.id ? 'scale-110 z-50' : 'scale-100 opacity-80 hover:opacity-100'}
+              `}>
+                  <div className={`w-2 h-2 rounded-full mb-1 border shadow-sm transition-colors
+                     ${hoveredRegion === pos.id ? 'bg-amber-600 border-white' : 'bg-amber-900/40 border-transparent'}
+                  `} />
+                  <span className={`
+                     font-serif font-bold text-[10px] sm:text-xs tracking-widest uppercase px-2 py-1 rounded shadow-sm border transition-all
+                     ${hoveredRegion === pos.id 
+                        ? 'bg-amber-100 text-amber-900 border-amber-300' 
+                        : 'bg-white/40 text-amber-900/80 border-transparent backdrop-blur-[2px]'}
+                  `}>
+                    {pos.name}
+                  </span>
+              </div>
+           </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <motion.div
@@ -570,38 +829,8 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
              </div>
           )}
 
-          {/* Region Label Layer (HTML Overlay - Z-Index 20) */}
-          {visibleLayers.regions && scenario.mapRegions.map(region => {
-             // Calculate best position for label (centroid of empty hexes)
-             const regionHexes = scenario.hexGrid?.filter(h => h.regionId === region.id) || [];
-             const occupiedKeys = new Set(scenario.units.map(u => u.hex ? `${u.hex.q},${u.hex.r}` : ""));
-             const emptyHexes = regionHexes.filter(h => !occupiedKeys.has(`${h.q},${h.r}`));
-             const candidates = emptyHexes.length > 0 ? emptyHexes : regionHexes;
-
-             let pos = { x: 0, y: 0 };
-             if (candidates.length > 0) {
-                 const sumX = candidates.reduce((s, h) => s + h.x, 0);
-                 const sumY = candidates.reduce((s, h) => s + h.y, 0);
-                 pos = { x: sumX / candidates.length, y: sumY / candidates.length };
-             } else {
-                 // Fallback to polygon centroid
-                 const centerX = region.points.reduce((sum, p) => sum + p[0], 0) / region.points.length;
-                 const centerY = region.points.reduce((sum, p) => sum + p[1], 0) / region.points.length;
-                 pos = { x: centerX, y: centerY };
-             }
-
-             return (
-               <div 
-                  key={region.id}
-                  className="absolute z-20 pointer-events-none flex items-center justify-center -translate-x-1/2 -translate-y-1/2 px-3 py-1 bg-[#fffcf5]/60 backdrop-blur-[1px] rounded-full shadow-sm border border-stone-400/30"
-                  style={{ left: pos.x, top: pos.y }}
-               >
-                  <span className="font-serif italic font-bold text-stone-800/80 whitespace-nowrap text-sm sm:text-base tracking-wide drop-shadow-sm">
-                    {region.name}
-                  </span>
-               </div>
-             )
-          })}
+          {/* Labels Layer */}
+          {renderLabels()}
 
           <canvas
             ref={canvasRef}
@@ -731,6 +960,14 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       )}
     </motion.div>
   )
+
+  // Helper inside component to get pixel from unit (since hexGrid is needed)
+  function getUnitPixel(u: any) {
+     if(!u.hex) return null;
+     const key = `${u.hex.q},${u.hex.r}`;
+     const hexData = scenario.hexIndex?.[key] ?? scenario.hexGrid?.find((h:any) => h.q === u.hex.q && h.r === u.hex.r);
+     return hexData ? {x: hexData.x, y: hexData.y} : null;
+  }
 }
 
 function LegendItem({ title, color, description }: { title: string; color: string; description: string }) {

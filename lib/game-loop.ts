@@ -96,6 +96,16 @@ export function getInitialPayload(tacticId: string): AIGameResponse | null {
     medopt_3: "medieval_siege_success", // Infiltrate Supply
     medopt_4: "medieval_siege_success", // Night Raid
     medopt_5: "medieval_siege_success", // Suppress Garrison
+    medopt_6: "medieval_siege_success", // Bridge Control
+    
+    // Three Kingdoms
+    tk_opt_1: "three_kingdoms_fire_success",
+    tk_opt_2: "medieval_siege_success", // Recycle generic success for now
+    
+    // Hydaspes
+    hyd_opt_1: "hydaspes_stampede",
+    hyd_opt_2: "hydaspes_stampede",
+    hyd_opt_3: "hydaspes_stampede",
   }
 
   const payloadKey = payloadMap[tacticId] || "ww2_flank_left_success"

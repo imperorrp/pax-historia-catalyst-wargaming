@@ -68,10 +68,18 @@ export function UnitCounter({ unit }: UnitCounterProps) {
             <line x1="100" y1="0" x2="0" y2="100" stroke={stroke} strokeWidth="8" />
           </svg>
         );
-      case 'armor': // Oval
+      case 'armor': 
+      case 'chariot': // Chariots share Armor symbol (mobility + shock)
         return (
           <svg viewBox="0 0 100 100" className="w-full h-full p-1 opacity-80">
             <ellipse cx="50" cy="50" rx="40" ry="25" fill="none" stroke={stroke} strokeWidth="6" />
+          </svg>
+        );
+      case 'elephant': // A heavy rectangle with a "trunk" line
+        return (
+          <svg viewBox="0 0 100 100" className="w-full h-full p-1 opacity-80">
+             <rect x="20" y="30" width="60" height="40" fill="none" stroke={stroke} strokeWidth="6" />
+             <line x1="80" y1="50" x2="95" y2="30" stroke={stroke} strokeWidth="6" />
           </svg>
         );
       case 'cavalry': // Single diagonal or special
@@ -84,6 +92,12 @@ export function UnitCounter({ unit }: UnitCounterProps) {
         return (
           <svg viewBox="0 0 100 100" className="w-full h-full p-0.5 opacity-80">
             <circle cx="50" cy="50" r="10" fill={stroke} />
+          </svg>
+        );
+      case 'naval': // Wave-like symbol
+        return (
+          <svg viewBox="0 0 100 100" className="w-full h-full p-0.5 opacity-80">
+            <path d="M10 50 Q25 30 40 50 Q55 70 70 50 Q85 30 100 50" fill="none" stroke={stroke} strokeWidth="6" />
           </svg>
         );
       default:

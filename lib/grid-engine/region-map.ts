@@ -46,7 +46,24 @@ export function generateRegionHexMap(regions: MapRegion[], width: number, height
       // Check which region this center point belongs to?
       // Find the first matching region (overlay priority)
       for (const region of regions) {
-        if (!isPointInPolygon(pixel, region.points)) continue;
+        // PAINTER'S ALGORITHM SUPPORT: Check sub-polygons if available
+        let inside = false;
+        if (region.subPolygons && region.subPolygons.length > 0) {
+          for (const sub of region.subPolygons) {
+            if (isPointInPolygon(pixel, sub)) {
+              inside = true;
+              break;
+            }
+          }
+        } else {
+          // Legacy support: Check main polygon
+          if (isPointInPolygon(pixel, region.points)) {
+            inside = true;
+          }
+        }
+
+        if (!inside) continue;
+
 
         // Ensure all corners fit inside the region/pixel bounds (avoid cropped hexes)
         const corners = getHexCorners(pixel);

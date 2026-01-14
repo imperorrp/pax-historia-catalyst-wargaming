@@ -578,6 +578,211 @@ export function drawFogOfIntent(
   ctx.setLineDash([])
 }
 
+// --- NEW VISUAL RENDERERS ---
+
+export function drawHACK({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#00ff41" // Matrix Green
+  ctx.lineWidth = 2
+  ctx.shadowColor = "#00ff41"
+  ctx.shadowBlur = 10
+
+  // Draw jagged digital line
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  
+  const segments = 10
+  const stepX = (to.x - from.x) / segments
+  const stepY = (to.y - from.y) / segments
+
+  for (let i = 1; i < segments; i++) {
+    const jitter = (Math.random() - 0.5) * 15
+    // Orthogonal steps for "digital" feel
+    if (i % 2 === 0) {
+       ctx.lineTo(from.x + stepX * i, from.y + stepY * i + jitter)
+    } else {
+       ctx.lineTo(from.x + stepX * i + jitter, from.y + stepY * i)
+    }
+  }
+  
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+
+  // Binary bits flowing
+  const time = Date.now() / 100
+  const bits = "101101"
+  ctx.fillStyle = "#00ff41"
+  ctx.font = "10px monospace"
+  ctx.textAlign = "center"
+  
+  // Draw binary at 3 points along line
+  for(let t=0.2; t<0.9; t+=0.3) {
+     const bx = from.x + (to.x - from.x) * t
+     const by = from.y + (to.y - from.y) * t
+     ctx.fillText(bits[Math.floor(Math.random()*6)], bx, by - 5)
+  }
+
+  // Reset shadow
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.globalAlpha = 1
+}
+
+export function drawFIRE_SHIP({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+  
+  ctx.globalAlpha = opacity
+  
+  // Main path - orange/red gradient
+  const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y)
+  grad.addColorStop(0, "rgba(255, 140, 0, 0)")
+  grad.addColorStop(0.5, "rgba(255, 69, 0, 0.6)")
+  grad.addColorStop(1, "rgba(255, 0, 0, 0.8)")
+  
+  ctx.strokeStyle = grad
+  ctx.lineWidth = 12 // Wide path representing fire spread
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+  
+  // Flame particles at target
+  ctx.fillStyle = "#ff4500"
+  for(let i=0; i<5; i++) {
+     const r = 10 + Math.random() * 10
+     const a = Math.random() * Math.PI * 2
+     ctx.beginPath()
+     ctx.arc(to.x + Math.cos(a)*10, to.y + Math.sin(a)*10, r, 0, Math.PI*2)
+     ctx.fill()
+  }
+
+  ctx.globalAlpha = 1
+}
+
+export function drawNAVAL_RAM({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  // Heavy solid arrow
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#2c3e50"
+  ctx.lineWidth = 10
+  ctx.lineCap = "butt"
+  
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+  
+  // Impact ripples
+  ctx.strokeStyle = "#3498db"
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(to.x, to.y, 15, 0, Math.PI*2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(to.x, to.y, 25, 0, Math.PI*2)
+  ctx.stroke()
+  
+  ctx.globalAlpha = 1
+}
+
+export function drawTRAMPLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const ang = angle(from, to)
+  
+  ctx.globalAlpha = opacity
+  // Very thick, blunt arrow representing sheer mass
+  ctx.strokeStyle = "#5e4b35" // Dark leather/mud color
+  ctx.fillStyle = "#5e4b35"
+  ctx.lineWidth = 18 
+  
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+  
+  // Blunt Head
+  ctx.beginPath()
+  ctx.arc(to.x, to.y, 12, 0, Math.PI*2)
+  ctx.fill()
+  
+  // "Shockwaves" on sides
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(to.x - 20, to.y - 20); ctx.lineTo(to.x + 10, to.y - 30);
+  ctx.moveTo(to.x - 20, to.y + 20); ctx.lineTo(to.x + 10, to.y + 30);
+  ctx.stroke()
+
+  ctx.globalAlpha = 1
+}
+
+export function drawRAIN_ARROWS({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "rgba(44, 62, 80, 0.6)"
+  ctx.lineWidth = 1.5
+  
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+  
+  // Draw 5 distinct high arcs
+  for(let i=-2; i<=2; i++) {
+     const offset = i * 15;
+     const cp = getControlPoint(from, to, -dist/3 + Math.abs(i)*5); // High arc
+     
+     ctx.beginPath()
+     ctx.moveTo(from.x, from.y)
+     ctx.quadraticCurveTo(cp.x + offset, cp.y, to.x + offset/2, to.y + offset/2)
+     ctx.stroke()
+     
+     // Small arrowheads at landing
+     const landX = to.x + offset/2
+     const landY = to.y + offset/2
+     ctx.beginPath()
+     ctx.arc(landX, landY, 2, 0, Math.PI*2)
+     ctx.fill()
+  }
+  
+  ctx.globalAlpha = 1
+}
+
+export function drawCOMBINED_ASSAULT({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  // Composite action showing coordinated artillery + infantry + cavalry
+  // Draw in three phases with different colors
+  
+  const ang = angle(from, to)
+  
+  ctx.globalAlpha = opacity * 0.6
+  
+  // Phase 1: Artillery bombardment (Red explosion at target)
+  ctx.fillStyle = "rgba(231, 76, 60, 0.3)"
+  ctx.strokeStyle = "#c0392b"
+  ctx.lineWidth = 2
+  drawStarburst(ctx, to.x, to.y, 40)
+  
+  // Phase 2: Infantry advance (Thick arrows)
+  ctx.globalAlpha = opacity * 0.8
+  ctx.strokeStyle = "#2c3e50"
+  ctx.lineWidth = 5
+  ctx.beginPath()
+  ctx.moveTo(from.x - 10, from.y - 10)
+  ctx.lineTo(to.x - 10, to.y - 10)
+  ctx.stroke()
+  drawArrowHead(ctx, { x: to.x - 10, y: to.y - 10 }, ang, 20, "#2c3e50")
+  
+  // Phase 3: Cavalry flanking (Curved arrow)
+  ctx.globalAlpha = opacity * 0.7
+  ctx.strokeStyle = "#f39c12"
+  ctx.lineWidth = 4
+  const cp = getControlPoint(from, to, 80)
+  ctx.beginPath()
+  ctx.moveTo(from.x + 10, from.y + 10)
+  ctx.quadraticCurveTo(cp.x, cp.y, to.x + 10, to.y + 10)
+  ctx.stroke()
+  drawArrowHead(ctx, { x: to.x + 10, y: to.y + 10 }, angle(cp, to), 20, "#f39c12")
+  
+  ctx.globalAlpha = 1
+}
+
 export function renderVisualAction(action: VisualActionType, context: DrawingContext) {
   const renderers: Record<VisualActionType, (ctx: DrawingContext) => void> = {
     ADVANCE: drawADVANCE,
@@ -598,6 +803,14 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
     FEINT: drawRETREAT, // Phantom arrow
     AIRSTRIKE: drawAIRSTRIKE,
     RECON: drawRECON,
+    COMBINED_ASSAULT: drawCOMBINED_ASSAULT, // Composite action
+    HACK: drawHACK,
+    EMP_BLAST: drawBOMBARD, // Reuse bombard visual but maybe change color in future
+    NAVAL_RAM: drawNAVAL_RAM,
+    FIRE_SHIP: drawFIRE_SHIP,
+    GATES_OPEN: drawINFILTRATE,
+    TRAMPLE: drawTRAMPLE,
+    RAIN_ARROWS: drawRAIN_ARROWS,
   }
 
   const renderer = renderers[action]

@@ -423,4 +423,35 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
       },
     ],
   },
+
+  // RED CLIFFS OUTCOMES
+  three_kingdoms_fire_success: {
+    narrative_update: "The Southeast wind howls! Huang Gai's fire ships crash into the chained Cao fleet. The iron links that provided stability now ensure their doom. The river turns into a sea of flames, and the northern soldiers, unused to naval warfare, panic and route.",
+    state_changes: [
+      { unit_id: "tk_u2", action: "REMOVE" }, // Fire ships are consumed
+      { unit_id: "tk_e1", action: "UPDATE_STATUS", new_tags: ["Burning", "Routing", "Sinking"] },
+      { unit_id: "tk_e2", action: "MOVE", semantic_update: { regionId: "rc-1", tag: "rear_guard" }, new_tags: ["Retreating"] }
+    ],
+    visual_fx: [
+      { type: "FIRE", region: "rc-2" },
+      { type: "SMOKE", region: "rc-2" },
+      { type: "EXPLOSION", target_unit: "tk_e1" }
+    ],
+    next_options: []
+  },
+
+  // CYBERPUNK OUTCOMES
+  hydaspes_stampede: {
+    narrative_update: "Your light infantry showers the War Elephants with javelins and arrows! The beasts, maddened by pain, turn around and trample their own infantry lines. The Indian center descends into chaos as the mud slows their chariots.",
+    state_changes: [
+      { unit_id: "ind_e1", action: "UPDATE_STATUS", new_tags: ["Rampaging", "Friendly Fire"] },
+      { unit_id: "ind_e2", action: "UPDATE_STATUS", new_tags: ["Stuck", "Immobile"] },
+      { unit_id: "mac_u1", action: "MOVE", semantic_update: { regionId: "hyd-3", tag: "flank_right" } }
+    ],
+    visual_fx: [
+      { type: "DUST", region: "hyd-4" },
+      { type: "IMPACT", target_unit: "ind_e1" }
+    ],
+    next_options: []
+  }
 }

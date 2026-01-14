@@ -51,6 +51,30 @@ export function getAdjacentRegions(regionId: string, regions: MapRegion[]): MapR
   })
 }
 
+// Chaikin's Algorithm for smoothing polygons
+// It cuts corners to create rounded organic shapes
+export function smoothPolygon(points: [number, number][], iterations: number = 2): [number, number][] {
+  if (points.length < 3) return points;
+
+  let output = [...points];
+
+  for (let i = 0; i < iterations; i++) {
+    const next: [number, number][] = [];
+    for (let j = 0; j < output.length; j++) {
+      const p0 = output[j];
+      const p1 = output[(j + 1) % output.length];
+
+      // Create two new points at 25% and 75% along the edge
+      const Q: [number, number] = [0.75 * p0[0] + 0.25 * p1[0], 0.75 * p0[1] + 0.25 * p1[1]];
+      const R: [number, number] = [0.25 * p0[0] + 0.75 * p1[0], 0.25 * p0[1] + 0.75 * p1[1]];
+
+      next.push(Q, R);
+    }
+    output = next;
+  }
+  return output;
+}
+
 // Theater culling: Find border regions and support regions
 export function generateTheaterOfOperations(
   playerUnitRegions: string[],

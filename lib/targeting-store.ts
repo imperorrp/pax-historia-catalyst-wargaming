@@ -2,6 +2,7 @@ import { create } from "zustand"
 import type { CatalystOption, WarRoomScenario, AIGameResponse, Unit } from "./types"
 import { SCENARIOS } from "./mock-data/scenarios"
 import { hydrateScenarioLayout } from "./grid-engine/layout-solver"
+import { generatePaintedMap } from "./grid-engine/map-painter"
 
 export type TargetingState = "idle" | "tactic_selected" | "unit_selected"
 
@@ -105,6 +106,15 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
     }),
 
   setScenario: (scenario) => {
+    // If layout definitions exist, paint the map procedurally
+    if (scenario.layoutDefs) {
+       scenario.mapRegions = generatePaintedMap(
+          scenario.layoutDefs, 
+          scenario.mapDimensions.width, 
+          scenario.mapDimensions.height
+       );
+    }
+    
     // Hydrate scenario if it doesn't have hexGrid yet
     const hydratedScenario = scenario.hexGrid ? scenario : hydrateScenarioLayout(scenario);
     set({
