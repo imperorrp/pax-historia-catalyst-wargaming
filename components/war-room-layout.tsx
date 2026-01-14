@@ -6,8 +6,9 @@ import { WarRoomMap } from "./war-room-map"
 import { UnitCounter } from "./unit-counter"
 import { CatalystCard } from "./catalyst-card"
 import { ScenarioSwitcher } from "./scenario-switcher"
+import { DebugPanel } from "./debug-panel"
 import { useTargetingStore } from "@/lib/targeting-store"
-import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target } from "lucide-react"
+import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target, Bug } from "lucide-react"
 import { reconcileStateChanges, getInitialPayload } from "@/lib/game-loop"
 
 export function WarRoomLayout() {
@@ -27,6 +28,8 @@ export function WarRoomLayout() {
   const goToPreviousRound = useTargetingStore((state) => state.goToPreviousRound)
   const goToNextRound = useTargetingStore((state) => state.goToNextRound)
   const jumpToRound = useTargetingStore((state) => state.jumpToRound)
+  const debugMode = useTargetingStore((state) => state.debugMode)
+  const toggleDebugMode = useTargetingStore((state) => state.toggleDebugMode)
 
   const [logs, setLogs] = useState<Array<{text: string, round: number}>>([{text: "Command Center initialized.", round: 0}])
   const [isLogExpanded, setIsLogExpanded] = useState(false)
@@ -230,10 +233,25 @@ export function WarRoomLayout() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <div className="hidden sm:block text-sm font-serif italic text-amber-800/70 border-r border-amber-900/10 pr-4">
                 {currentScenario.playerPolity} vs {currentScenario.enemyPolity}
               </div>
+              <button
+                onClick={() => {
+                  console.log('Debug button clicked, current debugMode:', debugMode)
+                  toggleDebugMode()
+                  console.log('After toggle, debugMode should be:', !debugMode)
+                }}
+                className={`p-2 rounded-lg transition-colors ${
+                  debugMode
+                    ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    : "hover:bg-amber-900/10 text-amber-800"
+                }`}
+                title="Toggle Debug Mode"
+              >
+                <Bug className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => setIsHelpOpen(true)}
                 className="p-2 hover:bg-amber-900/10 rounded-lg transition-colors text-amber-800"
@@ -449,11 +467,11 @@ export function WarRoomLayout() {
         <div className="hidden lg:flex flex-col lg:col-span-3 col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
           <button
             onClick={() => setIsLogExpanded(!isLogExpanded)}
-            className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0 group"
+            className="flex items-center justify-between gap-2 lg:p-3 xl:p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0 group"
           >
             <div className="flex items-center gap-2">
               <Radio className="w-4 h-4 flex-shrink-0 text-amber-700" />
-              <h2 className="font-serif font-bold text-sm text-amber-900">DISPATCH</h2>
+              <h2 className="font-serif font-bold lg:text-xs xl:text-sm text-amber-900">DISPATCH</h2>
             </div>
             {isLogExpanded ? (
               <ChevronUp className="w-4 h-4 text-amber-700" />
@@ -463,7 +481,7 @@ export function WarRoomLayout() {
           </button>
 
           {isLogExpanded && (
-            <div className="flex-1 overflow-y-auto p-3 text-xs">
+            <div className="flex-1 overflow-y-auto lg:p-2 xl:p-3 text-xs">
               {/* History Timeline */}
               <div className="space-y-1 mb-3">
                 <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider flex items-center gap-1">
@@ -537,11 +555,11 @@ export function WarRoomLayout() {
         <div className="hidden lg:flex flex-col col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
           <button
             onClick={() => setIsStatusExpanded(!isStatusExpanded)}
-            className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0"
+            className="flex items-center justify-between gap-2 lg:p-3 xl:p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0"
           >
             <div className="flex items-center gap-2">
               <Radio className="w-4 h-4 flex-shrink-0 text-amber-700" />
-              <h2 className="font-serif font-bold text-sm text-amber-900">UNITS</h2>
+              <h2 className="font-serif font-bold lg:text-xs xl:text-sm text-amber-900">UNITS</h2>
             </div>
             {isStatusExpanded ? (
               <ChevronUp className="w-4 h-4 text-amber-700" />
@@ -551,7 +569,7 @@ export function WarRoomLayout() {
           </button>
 
           {isStatusExpanded && (
-            <div ref={unitsSidebarRef} className="flex-1 overflow-y-auto space-y-2 p-3">
+            <div ref={unitsSidebarRef} className="flex-1 overflow-y-auto space-y-2 lg:p-2 xl:p-3">
               {currentScenario.units.map((unit) => {
                 const isSelected = selectedUnit?.id === unit.id
                 return (
@@ -560,7 +578,7 @@ export function WarRoomLayout() {
                     data-unit-id={unit.id}
                     onClick={() => useTargetingStore.getState().selectUnit(unit)}
                     className={`
-                      p-4 rounded-lg text-xs border-l-4 transition-all font-serif relative cursor-pointer
+                      lg:p-3 xl:p-4 rounded-lg text-xs border-l-4 transition-all font-serif relative cursor-pointer
                       hover:shadow-md hover:scale-[1.02] transform-gpu
                       ${isSelected 
                         ? 'ring-2 ring-amber-400 ring-offset-1 shadow-lg bg-gradient-to-r' 
@@ -598,7 +616,7 @@ export function WarRoomLayout() {
                            unit.type === 'cavalry' ? '∇' : '⚡'}
                         </div>
                         <div>
-                          <div className="font-bold text-sm leading-tight">{unit.name}</div>
+                          <div className="font-bold lg:text-xs xl:text-sm leading-tight">{unit.name}</div>
                           <div className="text-xs opacity-75 capitalize">{unit.type}</div>
                         </div>
                       </div>
@@ -653,11 +671,11 @@ export function WarRoomLayout() {
       <div className="hidden lg:block border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0">
         <button
           onClick={() => setIsTacticalExpanded(!isTacticalExpanded)}
-          className="flex items-center justify-between gap-2 p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors w-full text-left"
+          className="flex items-center justify-between gap-2 lg:p-3 xl:p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors w-full text-left"
         >
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 flex-shrink-0 text-amber-700" />
-            <h2 className="font-serif font-bold text-sm text-amber-900">TACTICAL OPTIONS</h2>
+            <h2 className="font-serif font-bold lg:text-xs xl:text-sm text-amber-900">TACTICAL OPTIONS</h2>
           </div>
           {isTacticalExpanded ? (
             <ChevronUp className="w-4 h-4 text-amber-700" />
@@ -675,8 +693,8 @@ export function WarRoomLayout() {
               transition={{ duration: 0.3, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <div className="px-6 py-3 sm:py-4">
-                <div className="flex gap-3 justify-center flex-wrap max-h-32 overflow-y-auto pb-2">
+              <div className="lg:px-4 xl:px-6 lg:py-2 xl:py-3 sm:py-4">
+                <div className="flex gap-3 justify-center flex-wrap lg:max-h-24 xl:max-h-32 overflow-y-auto pb-2">
                   {currentScenario.options.map((option) => (
                     <CatalystCard 
                        key={option.id} 
@@ -704,6 +722,18 @@ export function WarRoomLayout() {
       </div>
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      
+      {/* Debug Panel */}
+      <AnimatePresence>
+        {debugMode && (
+          <DebugPanel 
+            scenario={currentScenario} 
+            selectedTactic={selectedTactic}
+            onClose={toggleDebugMode}
+          />
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }

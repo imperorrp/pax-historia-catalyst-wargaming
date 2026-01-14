@@ -124,6 +124,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const [isRendered, setIsRendered] = useState(false)
   const selectedTactic = useTargetingStore((s) => s.selectedTactic)
   const visibleLayers = useTargetingStore((s) => s.visibleLayers)
+  const debugMode = useTargetingStore((s) => s.debugMode)
   const history = useTargetingStore((s) => s.history)
   const historyIndex = useTargetingStore((s) => s.historyIndex)
   const [showLayerPanel, setShowLayerPanel] = useState(false)
@@ -134,6 +135,100 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const [isDragging, setIsDragging] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
+
+  // Debugging report for action rendering issues
+  const [debugReport, setDebugReport] = useState<any[] | null>(null)
+
+  function analyzeActions() {
+    try {
+      const issues: any[] = [];
+      // Offscreen canvas for renderer tests
+      const off = document.createElement('canvas') as HTMLCanvasElement;
+      off.width = 10; off.height = 10;
+      const offCtx = off.getContext('2d')!;
+
+      const playerUnits = scenario.units.filter((u) => u.owner === "player")
+      const enemyUnits = scenario.units.filter((u) => u.owner === "enemy")
+
+      if (playerUnits.length === 0) {
+        issues.push({ severity: 'warn', message: 'No player units found in scenario' })
+      }
+
+      playerUnits.forEach((playerUnit) => {
+        const fromLoc = getUnitPixel(playerUnit)
+        if (!fromLoc) {
+          issues.push({ severity: 'error', message: `Unit ${playerUnit.id} missing hex/pixel` });
+        }
+
+        scenario.options.forEach((tactic) => {
+          const actionsToRender = tactic.compositeActions && tactic.compositeActions.length > 0
+            ? tactic.compositeActions
+            : [{ semanticAction: tactic.semanticAction, targetLogic: tactic.targetLogic, targetRegionId: tactic.targetRegionId }]
+
+          actionsToRender.forEach((action) => {
+            if (action.requiredUnitTypes && !action.requiredUnitTypes.includes(playerUnit.type)) {
+              // Not an issue—just not applicable to this unit
+              return;
+            }
+
+            // Resolve target loc using the same logic as render loop
+            let targetLoc: {x:number,y:number} | null = null
+            switch(action.targetLogic) {
+              case 'center_mass':
+                targetLoc = {
+                  x: enemyUnits.reduce((sum, u) => sum + (getUnitPixel(u)?.x || 0), 0) / (enemyUnits.length || 1),
+                  y: enemyUnits.reduce((sum, u) => sum + (getUnitPixel(u)?.y || 0), 0) / (enemyUnits.length || 1),
+                }
+                break;
+              case 'flank_left':
+                targetLoc = getUnitPixel([...enemyUnits].sort((a,b)=> (getUnitPixel(a)?.x||0) - (getUnitPixel(b)?.x||0))[0])
+                break;
+              case 'flank_right':
+                const sorted = [...enemyUnits].sort((a,b)=> (getUnitPixel(a)?.x||0) - (getUnitPixel(b)?.x||0));
+                targetLoc = getUnitPixel(sorted[sorted.length-1])
+                break;
+              case 'specific_region':
+                if (action.targetRegionId) {
+                  const r = scenario.mapRegions.find(r => r.id === action.targetRegionId);
+                  if (r && r.points && r.points.length>0) {
+                    const cx = r.points.reduce((s,p)=>s+p[0],0)/r.points.length;
+                    const cy = r.points.reduce((s,p)=>s+p[1],0)/r.points.length;
+                    targetLoc = {x:cx,y:cy}
+                  } else {
+                    issues.push({ severity: 'error', message: `Tactic ${tactic.id} references missing/empty region ${action.targetRegionId}` })
+                  }
+                }
+                break;
+              case 'nearest':
+              default:
+                let min = Infinity
+                enemyUnits.forEach(e=>{ const eLoc=getUnitPixel(e); if(!eLoc) return; const d=(eLoc.x-(fromLoc?.x||0))**2 + (eLoc.y-(fromLoc?.y||0))**2; if(d<min){min=d;targetLoc=eLoc}})
+                break;
+            }
+
+            if (!fromLoc) return; // already logged
+
+            if (!targetLoc) {
+              issues.push({ severity: 'warn', message: `Tactic ${tactic.id}/${action.semanticAction} unable to resolve target for unit ${playerUnit.id}` })
+              return
+            }
+
+            // Test renderer presence by calling renderVisualAction with offscreen context
+            const drawn = renderVisualAction(action.semanticAction as any, { ctx: offCtx, from: fromLoc, to: targetLoc, opacity: 0.9 })
+            if (!drawn) {
+              issues.push({ severity: 'error', message: `No renderer for action ${action.semanticAction} (tactic ${tactic.id})` })
+            }
+          })
+        })
+      })
+
+      setDebugReport(issues)
+      console.info('[Action Debug] Found', issues.length, 'issues. See debugReport state or console for details.');
+      issues.forEach(i=>{ if(i.severity==='error') console.error(i.message); else console.warn(i.message) })
+    } catch (err) {
+      console.error('[analyzeActions] Exception', err)
+    }
+  }
   const [lastPinchDist, setLastPinchDist] = useState<number | null>(null)
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -357,10 +452,46 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       })
     }
 
-    // NEW: Render Rivers as Border Features
+    // NEW: Render Rivers as Border Features (Legacy Support)
     if (scenario.rivers && visibleLayers.terrain) {
       scenario.rivers.forEach(river => {
         drawRiver(rc, scenario.mapRegions, river);
+      });
+    }
+
+    // NEW: Render Visual Decorations (Labels, Visual Rivers, Roads)
+    if (scenario.decorations && visibleLayers.terrain) {
+      scenario.decorations.forEach(deco => {
+        if (deco.type === 'river') {
+          // Draw smooth curve for rivers
+          if (deco.points.length > 1) {
+             rc.curve(deco.points, {
+               stroke: deco.color || '#2980b9',
+               strokeWidth: deco.width || 3,
+               roughness: 0.8,
+               bowing: 1.5 // More curve
+             });
+          }
+        } else if (deco.type === 'road') {
+           if (deco.points.length > 1) {
+             rc.curve(deco.points, {
+               stroke: deco.color || '#5d4037',
+               strokeWidth: deco.width || 3,
+               roughness: 0.5,
+               strokeLineDash: deco.style === 'dashed' ? [5, 5] : undefined
+             });
+           }
+        } else if (deco.type === 'label' && deco.points.length > 0) {
+           const [x, y] = deco.points[0];
+           ctx.save();
+           ctx.font = "italic bold 16px 'Crimson Text', serif";
+           ctx.fillStyle = deco.color || "rgba(0,0,0,0.6)";
+           ctx.shadowColor = "rgba(255,255,255,0.8)";
+           ctx.shadowBlur = 4;
+           ctx.textAlign = "center";
+           ctx.fillText(deco.label || "", x, y);
+           ctx.restore();
+        }
       });
     }
 
@@ -467,62 +598,86 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         // Sort enemies by X coordinate for Flank logic
         const enemiesSortedX = [...enemyUnits].sort((a,b) => (getUnitPixel(a)?.x||0) - (getUnitPixel(b)?.x||0));
 
+        // Get composite actions or fallback to single action
+        const actionsToRender = tacticToDisplay.compositeActions && tacticToDisplay.compositeActions.length > 0 
+          ? tacticToDisplay.compositeActions 
+          : [{ semanticAction: tacticToDisplay.semanticAction, targetLogic: tacticToDisplay.targetLogic, targetRegionId: tacticToDisplay.targetRegionId }]
+
         playerUnits.forEach((playerUnit) => {
-          // Check if this unit type is relevant for the tactic
-          if (tacticToDisplay.requiredUnitTypes && !tacticToDisplay.requiredUnitTypes.includes(playerUnit.type)) {
-             return; 
-          }
+          actionsToRender.forEach((action, actionIndex) => {
+            // Check if this unit type is relevant for the action
+            if (action.requiredUnitTypes && !action.requiredUnitTypes.includes(playerUnit.type)) {
+               console.warn(`[render] Skip action ${action.semanticAction} for unit ${playerUnit.id} due to unit type mismatch (required: ${action.requiredUnitTypes.join(',')}, unit: ${playerUnit.type})`);
+               return; 
+            }
 
-          const fromLoc = getUnitPixel(playerUnit);
-          if (!fromLoc) return;
+            const fromLoc = getUnitPixel(playerUnit);
+            if (!fromLoc) {
+              console.warn(`[render] Unit ${playerUnit.id} has no pixel (hex missing), skipping action ${action.semanticAction}`);
+              return;
+            }
 
-          let targetLoc = null;
+            let targetLoc = null;
 
-          // --- SMART TARGETING LOGIC ---
-          switch(tacticToDisplay.targetLogic) {
-             case "center_mass":
-                targetLoc = enemyCentroid;
-                break;
-             case "flank_left":
-                // Target enemy's rightmost unit (Player's left perspective usually, or absolute map left?)
-                // Let's assume Map Left = Low X.
-                targetLoc = getUnitPixel(enemiesSortedX[0]); // Leftmost enemy
-                break;
-             case "flank_right":
-                targetLoc = getUnitPixel(enemiesSortedX[enemiesSortedX.length-1]); // Rightmost enemy
-                break;
-             case "specific_region":
-                if (tacticToDisplay.targetRegionId) {
-                   const r = scenario.mapRegions.find(r => r.id === tacticToDisplay.targetRegionId);
-                   if (r) {
-                      // rough centroid
-                      const cx = r.points.reduce((s,p)=>s+p[0],0)/r.points.length;
-                      const cy = r.points.reduce((s,p)=>s+p[1],0)/r.points.length;
-                      targetLoc = {x:cx, y:cy};
-                   }
-                }
-                break;
-             case "nearest":
-             default:
-                // Find nearest enemy (Classic logic)
-                let minDist = Infinity;
-                enemyUnits.forEach(e => {
-                   const eLoc = getUnitPixel(e);
-                   if(!eLoc) return;
-                   const d = (eLoc.x-fromLoc.x)**2 + (eLoc.y-fromLoc.y)**2;
-                   if(d < minDist) { minDist = d; targetLoc = eLoc; }
-                });
-                break;
-          }
-          
-          if (targetLoc) {
-            renderVisualAction(tacticToDisplay.semanticAction as any, {
-              ctx,
-              from: fromLoc,
-              to: targetLoc,
-              opacity: 0.8,
-            });
-          }
+            // --- SMART TARGETING LOGIC ---
+            switch(action.targetLogic) {
+               case "center_mass":
+                  targetLoc = enemyCentroid;
+                  break;
+               case "flank_left":
+                  // Target enemy's rightmost unit (Player's left perspective usually, or absolute map left?)
+                  // Let's assume Map Left = Low X.
+                  targetLoc = getUnitPixel(enemiesSortedX[0]); // Leftmost enemy
+                  break;
+               case "flank_right":
+                  targetLoc = getUnitPixel(enemiesSortedX[enemiesSortedX.length-1]); // Rightmost enemy
+                  break;
+               case "specific_region":
+                  if (action.targetRegionId) {
+                     const r = scenario.mapRegions.find(r => r.id === action.targetRegionId);
+                     if (r && r.points && r.points.length > 0) {
+                        // rough centroid
+                        const cx = r.points.reduce((s,p)=>s+p[0],0)/r.points.length;
+                        const cy = r.points.reduce((s,p)=>s+p[1],0)/r.points.length;
+                        targetLoc = {x:cx, y:cy};
+                     } else {
+                        console.warn(`[render] Specific region ${action.targetRegionId} for action ${action.semanticAction} not found or has no points`);
+                     }
+                  }
+                  break;
+               case "nearest":
+               default:
+                  // Find nearest enemy (Classic logic)
+                  let minDist = Infinity;
+                  enemyUnits.forEach(e => {
+                     const eLoc = getUnitPixel(e);
+                     if(!eLoc) return;
+                     const d = (eLoc.x-fromLoc.x)**2 + (eLoc.y-fromLoc.y)**2;
+                     if(d < minDist) { minDist = d; targetLoc = eLoc; }
+                  });
+                  break;
+            }
+            
+            if (targetLoc) {
+              // Stagger opacity for multiple actions to show sequence
+              const baseOpacity = 0.8;
+              const opacityStep = actionsToRender.length > 1 ? 0.2 / actionsToRender.length : 0;
+              const opacity = Math.max(0.3, baseOpacity - (actionIndex * opacityStep));
+              
+              const drawn = renderVisualAction(action.semanticAction as any, {
+                ctx,
+                from: fromLoc,
+                to: targetLoc,
+                opacity: opacity,
+              });
+
+              if (!drawn) {
+                console.warn(`[render] Action ${action.semanticAction} not drawn (no renderer) for unit ${playerUnit.id} -> target ${action.targetLogic}${action.targetRegionId ? ' '+action.targetRegionId : ''}`);
+              }
+            } else {
+              console.warn(`[render] Could not resolve target location for action ${action.semanticAction} from unit ${playerUnit.id} with targetLogic ${action.targetLogic}`);
+            }
+          });
         });
       }
     }
@@ -638,8 +793,62 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       });
     }
 
+    // 7. Debug Overlays (when debug mode is enabled)
+    if (debugMode && visibleLayers.units) {
+      ctx.save();
+      ctx.font = "9px monospace";
+      ctx.textAlign = "center";
+      
+      // Show hex coordinates on units
+      scenario.units.forEach(unit => {
+        if (unit.hex) {
+          const key = `${unit.hex.q},${unit.hex.r}`;
+          const hexData = scenario.hexIndex?.[key] ?? scenario.hexGrid?.find(h => h.q === unit.hex!.q && h.r === unit.hex!.r);
+          if (hexData) {
+            const loc = { x: hexData.x, y: hexData.y };
+            
+            // Background for readability
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(loc.x - 20, loc.y + 25, 40, 12);
+            
+            // Hex coordinates
+            ctx.fillStyle = "#00ff00";
+            ctx.fillText(`(${unit.hex.q},${unit.hex.r})`, loc.x, loc.y + 35);
+          }
+        }
+      });
+
+      // Show region centroids and IDs
+      if (visibleLayers.regions) {
+        scenario.mapRegions.forEach(region => {
+          if (region.centroid || region.points.length > 0) {
+            const cx = region.centroid?.x || region.points.reduce((s,p)=>s+p[0],0)/region.points.length;
+            const cy = region.centroid?.y || region.points.reduce((s,p)=>s+p[1],0)/region.points.length;
+            
+            // Draw crosshair at centroid
+            ctx.strokeStyle = "rgba(255, 0, 255, 0.5)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cx - 10, cy);
+            ctx.lineTo(cx + 10, cy);
+            ctx.moveTo(cx, cy - 10);
+            ctx.lineTo(cx, cy + 10);
+            ctx.stroke();
+            
+            // Region ID
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(cx - 40, cy - 20, 80, 14);
+            ctx.fillStyle = "#ff00ff";
+            ctx.fillText(region.id, cx, cy - 10);
+          }
+        });
+      }
+      
+      ctx.restore();
+    }
+
     setIsRendered(true)
-  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers, hoveredRegion]) // Fixed dep array to prevent rerenders
+  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers, hoveredRegion, debugMode]) // Fixed dep array to prevent rerenders
 
   // --- IMPROVED LABEL RENDERING WITH VORONOI CENTROIDS ---
   const renderLabels = () => {
@@ -952,6 +1161,23 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
                   <StatusLegendItem color="#e67e22" label="Engaged" description="Short dashes" />
                   <StatusLegendItem color="#e74c3c" label="Wavering" description="Long dashes" />
                   <StatusLegendItem color="#95a5a6" label="Routing" description="Faded blur" />
+                </div>
+
+                {/* Dev: Debug Actions Button & Report */}
+                <div className="mt-4">
+                  <button className="px-3 py-2 bg-amber-900 text-white rounded" onClick={() => analyzeActions()}>
+                    Debug Actions
+                  </button>
+                  {debugReport && debugReport.length > 0 && (
+                    <div className="mt-3 p-2 bg-white/80 rounded border">
+                      <div className="font-bold text-sm mb-2">Debug Report (first 10 issues)</div>
+                      <ul className="text-xs list-disc pl-4" style={{ maxHeight: 180, overflow: 'auto' }}>
+                        {debugReport.slice(0,10).map((r, i) => (
+                          <li key={i}><strong>{r.severity}:</strong> {r.message}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

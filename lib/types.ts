@@ -23,6 +23,28 @@ export interface TacticalMesh {
 export type AnchorType = 'centroid' | 'border' | 'sector' | 'feature';
 export type PositionTag = 'center' | 'front_line' | 'rear_guard' | 'rear' | 'flank_left' | 'flank_right';
 
+export interface PositionTagIndex {
+  [key: string]: number;
+}
+
+export interface CompositeActionDef {
+  semanticAction: VisualActionType;
+  targetLogic?: TargetLogic;
+  targetRegionId?: string;
+  requiredUnitTypes?: string[];
+  description?: string;
+}
+
+export interface MapDecoration {
+  id: string;
+  type: "river" | "road" | "label" | "symbol";
+  points: [number, number][]; // Line segments or single point for label/symbol
+  label?: string; // Text for labels
+  style?: "solid" | "dotted" | "dashed" | "wavy";
+  color?: string; // Hex or rgba
+  width?: number;
+}
+
 // How do we define the shape of a region?
 export type RegionShapeType = 
   | "point"       // Standard blob (Village, Hill)
@@ -87,6 +109,8 @@ export interface CatalystOption {
   targetLogic?: TargetLogic // NEW: Hints the map where to draw arrows
   targetRegionId?: string   // NEW: For specific regional attacks
   requiredUnitTypes?: ("armor" | "infantry" | "cavalry" | "artillery" | "elephant" | "chariot" | "naval")[]
+  visualEffects?: string[]; // NEW: List of effects to trigger
+  compositeActions?: CompositeActionDef[]; // NEW: Multiple actions in one option
 }
 
 export interface MapRegion {
@@ -129,6 +153,8 @@ export type VisualActionType =
   | "AIRSTRIKE"
   | "RECON"
   | "COMBINED_ASSAULT"  // Composite: Artillery + Infantry + Cavalry
+  | "REGION_BOMBARDMENT" // New: Visual effect on region
+  | "REGION_ENCIRCLEMENT" // New: Visual encirclement of region
   // NEW TYPES
   | "HACK"           // Digital attack lines
   | "EMP_BLAST"      // Area of effect disruption
@@ -182,6 +208,7 @@ export interface WarRoomScenario {
     width: number
     height: number
   }
+  decorations?: MapDecoration[]; // NEW: Non-gameplay visual layers (rivers, roads, labels)
   hexGrid?: HexData[];
   // Optional lookup map for fast hex->pixel access keyed by "q,r"
   hexIndex?: Record<string, HexData>;

@@ -29,6 +29,7 @@ interface TargetingStore {
   isAnimating: boolean
   history: HistoryEntry[]
   historyIndex: number
+  debugMode: boolean
 
   // Actions
   selectTactic: (tactic: CatalystOption) => void
@@ -44,6 +45,7 @@ interface TargetingStore {
   goToNextRound: () => void
   jumpToRound: (index: number) => void
   saveToHistory: (scenario: WarRoomScenario, narrative: string, tactic: CatalystOption | null) => void
+  toggleDebugMode: () => void
 }
 
 // Hydrate initial scenario once
@@ -65,6 +67,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   isAnimating: false,
   history: [{ round: 1, scenario: initialScenario, narrative: "Initial deployment", tacticUsed: null }],
   historyIndex: 0,
+  debugMode: false,
 
   selectTactic: (tactic) => {
     console.debug('[history] selectTactic called:', tactic?.id ?? null)
@@ -199,4 +202,6 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
       })
     }
   },
+
+  toggleDebugMode: () => set((state) => ({ debugMode: !state.debugMode })),
 }))

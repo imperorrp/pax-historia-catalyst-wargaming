@@ -783,7 +783,7 @@ export function drawCOMBINED_ASSAULT({ ctx, from, to, opacity = 1 }: DrawingCont
   ctx.globalAlpha = 1
 }
 
-export function renderVisualAction(action: VisualActionType, context: DrawingContext) {
+export function renderVisualAction(action: VisualActionType, context: DrawingContext): boolean {
   const renderers: Record<VisualActionType, (ctx: DrawingContext) => void> = {
     ADVANCE: drawADVANCE,
     ASSAULT: drawASSAULT,
@@ -804,6 +804,8 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
     AIRSTRIKE: drawAIRSTRIKE,
     RECON: drawRECON,
     COMBINED_ASSAULT: drawCOMBINED_ASSAULT, // Composite action
+    REGION_BOMBARDMENT: drawBOMBARD, // Region-wide bombardment
+    REGION_ENCIRCLEMENT: drawENCIRCLE, // Region encirclement
     HACK: drawHACK,
     EMP_BLAST: drawBOMBARD, // Reuse bombard visual but maybe change color in future
     NAVAL_RAM: drawNAVAL_RAM,
@@ -816,5 +818,9 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
   const renderer = renderers[action]
   if (renderer) {
     renderer(context)
+    return true
   }
+
+  console.warn(`[renderVisualAction] No renderer for action: ${action}`)
+  return false
 }
