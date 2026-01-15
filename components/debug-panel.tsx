@@ -31,10 +31,10 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="fixed right-4 top-20 bottom-4 w-[420px] bg-white/95 backdrop-blur-lg shadow-2xl border-2 border-purple-200 rounded-lg overflow-hidden z-50"
+      className="fixed right-4 top-20 bottom-4 w-[420px] bg-white/95 backdrop-blur-lg shadow-2xl border-2 border-purple-200 rounded-lg overflow-hidden z-50 flex flex-col"
     >
       {/* Header */}
-      <div className="bg-purple-600 text-white px-4 py-3 flex items-center justify-between border-b-2 border-purple-700">
+      <div className="bg-purple-600 text-white px-4 py-3 flex items-center justify-between border-b-2 border-purple-700 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <h3 className="font-bold font-mono text-sm">DEBUG MODE</h3>
@@ -45,7 +45,7 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
       </div>
 
       {/* Content */}
-      <div className="overflow-y-auto h-full pb-4">
+      <div className="overflow-y-auto flex-1 pb-6">
         {/* Scenario Overview */}
         <DebugSection 
           title="Scenario Info" 
