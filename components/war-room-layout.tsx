@@ -3,13 +3,16 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { WarRoomMap } from "./war-room-map"
-import { UnitCounter } from "./unit-counter"
 import { CatalystCard } from "./catalyst-card"
-import { ScenarioSwitcher } from "./scenario-switcher"
 import { DebugPanel } from "./debug-panel"
+import { WarRoomHeader } from "./war-room-header"
+import { TacticalPanel } from "./tactical-panel"
+import { DispatchLog } from "./dispatch-log"
+import { UnitsPanel } from "./units-panel"
+import { HelpModal } from "./help-modal"
 import { useTargetingStore } from "@/lib/targeting-store"
-import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target, Bug } from "lucide-react"
 import { reconcileStateChanges, getInitialPayload } from "@/lib/game-loop"
+import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target, Bug } from "lucide-react"
 
 export function WarRoomLayout() {
   const selectedTactic = useTargetingStore((state) => state.selectedTactic)
@@ -32,30 +35,12 @@ export function WarRoomLayout() {
   const toggleDebugMode = useTargetingStore((state) => state.toggleDebugMode)
 
   const [logs, setLogs] = useState<Array<{text: string, round: number}>>([{text: "Command Center initialized.", round: 0}])
-  const [isLogExpanded, setIsLogExpanded] = useState(false)
-  const [isStatusExpanded, setIsStatusExpanded] = useState(false)
+  const [isLogExpanded, setIsLogExpanded] = useState(true)
+  const [isStatusExpanded, setIsStatusExpanded] = useState(true)
   const [isMapMaximized, setIsMapMaximized] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const unitsSidebarRef = useRef<HTMLDivElement>(null)
   const [isTacticalExpanded, setIsTacticalExpanded] = useState(true)
-
-  // Responsive: auto-expand sidebars on desktop
-  useEffect(() => {
-    const handleResize = () => {
-      const isDesktop = window.innerWidth >= 1024 // lg breakpoint
-      if (isDesktop && !isLogExpanded) {
-        setIsLogExpanded(true)
-        setIsStatusExpanded(true)
-      }
-    }
-    
-    // Run on mount
-    handleResize()
-    
-    // Listen for resize
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   const isHistoricalView = historyIndex < history.length - 1
 
@@ -127,22 +112,19 @@ export function WarRoomLayout() {
   if (isMapMaximized) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50 text-amber-900">
-        <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-6 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-sm font-serif font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full">
-                ROUND {currentRound}
-              </div>
-              <h1 className="font-serif text-xl font-bold text-amber-900">COMMAND CENTER - Pax Historia</h1>
-            </div>
-            <button
-              onClick={() => setIsMapMaximized(false)}
-              className="p-2 hover:bg-amber-900/5 rounded-lg transition-colors text-amber-800"
-            >
-              <Minimize2 className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
+        <WarRoomHeader
+          isHistoricalView={isHistoricalView}
+          currentRound={currentRound}
+          historyIndex={historyIndex}
+          historyLength={history.length}
+          currentScenario={currentScenario}
+          debugMode={debugMode}
+          onToggleDebug={toggleDebugMode}
+          onHelpOpen={() => setIsHelpOpen(true)}
+          onGoToPrevious={goToPreviousRound}
+          onGoToNext={goToNextRound}
+          isAnimating={isAnimating}
+        />
 
         <div className="flex-1 overflow-hidden">
           <div className="w-full h-full bg-amber-50 border border-amber-900/10 overflow-hidden shadow-inner relative">
@@ -150,123 +132,37 @@ export function WarRoomLayout() {
           </div>
         </div>
 
-        <div className="border-t border-amber-900/10 bg-amber-50/80 backdrop-blur-sm px-6 py-4 flex-shrink-0">
-          <h3 className="text-xs font-serif font-bold text-amber-900 mb-3 uppercase tracking-wider">
-            Tactical Options
-          </h3>
-          <div className="flex gap-3 justify-center flex-wrap max-h-28 overflow-y-auto">
-            {currentScenario.options.map((option) => (
-              <CatalystCard 
-                 key={option.id} 
-                 option={option}
-                 disabled={isHistoricalView} 
-              />
-            ))}
-          </div>
-          {selectedTactic && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={handleCommit}
-              className="w-full mt-3 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-serif font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md"
-            >
-              <Check className="w-4 h-4" />
-              CONFIRM & ADVANCE ROUND
-            </motion.button>
-          )}
-        </div>
+        <TacticalPanel
+          isExpanded={true}
+          onToggle={() => {}}
+          currentScenario={currentScenario}
+          selectedTactic={selectedTactic}
+          isHistoricalView={isHistoricalView}
+          onCommit={handleCommit}
+          isAnimating={isAnimating}
+        />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50 text-amber-900">
-      <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-3 md:px-6 py-2 md:py-4 flex-shrink-0 relative">
-        {/* Historical View Safety Banner */}
-        {isHistoricalView && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-400 overflow-hidden">
-             <div className="w-full h-full bg-stripes-amber animate-slide"></div>
-          </div>
-        )}
-        
-        <div className="space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
-              {isHistoricalView ? (
-                 <div className="flex items-center gap-2 px-2 md:px-3 py-1 bg-amber-100 text-amber-800 rounded-full border border-amber-200 shadow-inner">
-                    <Rewind className="w-3 md:w-4 h-3 md:h-4" />
-                    <span className="text-[10px] md:text-xs font-bold font-serif uppercase tracking-wider">Historical</span>
-                 </div>
-              ) : (
-                 <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.6)]" />
-              )}
-              
-              <h1 className="font-serif text-base md:text-xl font-bold text-amber-900">COMMAND CENTER</h1>
-              <div className={`text-xs md:text-sm font-serif font-bold px-2 md:px-3 py-1 rounded-full transition-colors ${
-                 isHistoricalView 
-                   ? "bg-stone-200 text-stone-600 ring-1 ring-stone-300"
-                   : "bg-red-100 text-red-700 shadow-sm"
-              }`}>
-                R{currentRound}
-              </div>
-              
-              {/* History Navigation Controls */}
-              <div className="flex items-center gap-1 bg-amber-900/5 p-1 rounded-lg border border-amber-900/5">
-                <button
-                  onClick={goToPreviousRound}
-                  disabled={historyIndex === 0 || isAnimating}
-                  className="p-1 md:p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title="Previous Round"
-                >
-                  <ChevronLeft className="w-3 md:w-4 h-3 md:h-4 text-amber-900" />
-                </button>
-                <div className="px-1.5 md:px-2 text-[10px] md:text-xs font-mono font-bold text-amber-900/60 min-w-[2.5rem] md:min-w-[3rem] text-center">
-                   {historyIndex + 1}/{history.length}
-                </div>
-                <button
-                  onClick={goToNextRound}
-                  disabled={historyIndex === history.length - 1 || isAnimating}
-                  className="p-1 md:p-1.5 rounded hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title="Next Round"
-                >
-                  <ChevronRight className="w-3 md:w-4 h-3 md:h-4 text-amber-900" />
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 md:gap-4">
-              <div className="hidden sm:block text-sm font-serif italic text-amber-800/70 border-r border-amber-900/10 pr-4">
-                {currentScenario.playerPolity} vs {currentScenario.enemyPolity}
-              </div>
-              <button
-                onClick={() => {
-                  console.log('Debug button clicked, current debugMode:', debugMode)
-                  toggleDebugMode()
-                  console.log('After toggle, debugMode should be:', !debugMode)
-                }}
-                className={`p-2 rounded-lg transition-colors ${
-                  debugMode
-                    ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                    : "hover:bg-amber-900/10 text-amber-800"
-                }`}
-                title="Toggle Debug Mode"
-              >
-                <Bug className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setIsHelpOpen(true)}
-                className="p-2 hover:bg-amber-900/10 rounded-lg transition-colors text-amber-800"
-                title="Help Guide"
-              >
-                <HelpCircle className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-          <ScenarioSwitcher />
-        </div>
-      </header>
+      <WarRoomHeader
+        isHistoricalView={isHistoricalView}
+        currentRound={currentRound}
+        historyIndex={historyIndex}
+        historyLength={history.length}
+        currentScenario={currentScenario}
+        debugMode={debugMode}
+        onToggleDebug={toggleDebugMode}
+        onHelpOpen={() => setIsHelpOpen(true)}
+        onGoToPrevious={goToPreviousRound}
+        onGoToNext={goToNextRound}
+        isAnimating={isAnimating}
+      />
 
       {/* Main Content Grid */}
-      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-3 p-3 md:p-4 overflow-y-auto lg:overflow-hidden">
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 overflow-y-auto lg:overflow-hidden">
         
         {/* MOBILE LAYOUT: Vertical Stack */}
         {/* Map Section - Visible on mobile first */}
@@ -378,7 +274,7 @@ export function WarRoomLayout() {
             </div>
           </div>
 
-          <div className="overflow-y-auto space-y-2 p-3" style={{ maxHeight: '400px' }}>
+          <div className="overflow-y-auto space-y-1.5 p-2" style={{ maxHeight: '400px' }}>
                   {currentScenario.units.map((unit) => {
                     const isSelected = selectedUnit?.id === unit.id
                     return (
@@ -387,9 +283,9 @@ export function WarRoomLayout() {
                         data-unit-id={unit.id}
                         onClick={() => useTargetingStore.getState().selectUnit(unit)}
                         className={`
-                          p-3 rounded-lg text-xs border-l-4 transition-all font-serif relative cursor-pointer
+                          p-2 rounded-lg text-[10px] border-l-4 transition-all font-serif relative cursor-pointer
                           ${isSelected 
-                            ? 'ring-2 ring-amber-400 ring-offset-1 shadow-lg bg-gradient-to-r' 
+                            ? 'ring-1 ring-amber-400 ring-offset-1 shadow-sm bg-gradient-to-r' 
                             : 'hover:bg-amber-50/30'
                           }
                           ${
@@ -411,10 +307,10 @@ export function WarRoomLayout() {
                           </motion.div>
                         )}
 
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-start justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <div className={`
-                              w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                              w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
                               ${unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"}
                             `}>
                               {unit.type === 'infantry' ? '⊠' : 
@@ -422,8 +318,8 @@ export function WarRoomLayout() {
                                unit.type === 'cavalry' ? '∇' : '⚡'}
                             </div>
                             <div>
-                              <div className="font-bold text-sm leading-tight">{unit.name}</div>
-                              <div className="text-xs opacity-75 capitalize">{unit.type}</div>
+                              <div className="font-bold text-xs leading-tight">{unit.name}</div>
+                              <div className="text-[10px] opacity-75 capitalize">{unit.type}</div>
                             </div>
                           </div>
                           <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
@@ -433,7 +329,7 @@ export function WarRoomLayout() {
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap gap-1 mb-2">
+                        <div className="flex flex-wrap gap-1 mb-1.5">
                           {unit.tags.slice(0, 2).map((tag, idx) => (
                             <span key={idx} className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
                               {tag}
@@ -451,7 +347,7 @@ export function WarRoomLayout() {
                               unit.status === 'engaged' ? 'bg-orange-500' :
                               unit.status === 'wavering' ? 'bg-red-500' : 'bg-gray-500'
                             }`} />
-                            <span className="text-xs opacity-80 uppercase tracking-wider">
+                            <span className="text-[10px] opacity-80 uppercase tracking-wider">
                               {unit.status}
                             </span>
                           </div>
@@ -464,80 +360,22 @@ export function WarRoomLayout() {
 
         {/* DESKTOP LAYOUT: Original 3-column grid */}
         {/* Left Sidebar - Dispatch Log (collapsible) */}
-        <div className="hidden lg:flex flex-col lg:col-span-3 col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
-          <button
-            onClick={() => setIsLogExpanded(!isLogExpanded)}
-            className="flex items-center justify-between gap-2 lg:p-3 xl:p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0 group"
-          >
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 flex-shrink-0 text-amber-700" />
-              <h2 className="font-serif font-bold lg:text-xs xl:text-sm text-amber-900">DISPATCH</h2>
-            </div>
-            {isLogExpanded ? (
-              <ChevronUp className="w-4 h-4 text-amber-700" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-amber-700" />
-            )}
-          </button>
-
-          {isLogExpanded && (
-            <div className="flex-1 overflow-y-auto lg:p-2 xl:p-3 text-xs">
-              {/* History Timeline */}
-              <div className="space-y-1 mb-3">
-                <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Rewind className="w-3 h-3" />
-                  History
-                </div>
-                {history.map((entry, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => jumpToRound(idx)}
-                    className={`w-full text-left py-1.5 px-2.5 rounded border-l-2 transition-all ${
-                      idx === historyIndex
-                        ? "bg-amber-600/20 border-amber-600 text-amber-900 font-semibold"
-                        : "bg-amber-50/40 border-amber-600/40 text-amber-900/70 hover:bg-amber-100/60"
-                    }`}
-                  >
-                    <div className="font-mono text-xs">R{entry.round}</div>
-                    {entry.tacticUsed && (
-                      <div className="text-xs opacity-75 truncate">{entry.tacticUsed.title}</div>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Regular Logs */}
-              <div className="font-serif font-bold text-xs text-amber-900 mb-2 uppercase tracking-wider">
-                Dispatch Log
-              </div>
-              <div className="space-y-2 font-mono text-amber-800/80">
-                <AnimatePresence mode="popLayout">
-                  {logs.map((log, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      className={`py-1.5 px-2.5 rounded border-l-2 transition-all ${
-                        log.round === currentRound
-                          ? "bg-amber-200/60 border-amber-600 text-amber-950 font-semibold shadow-sm"
-                          : log.round === currentRound - 1
-                          ? "bg-amber-100/50 border-amber-500 text-amber-900/90"
-                          : "bg-amber-50/40 border-amber-600/40 text-amber-900/70"
-                      }`}
-                    >
-                      {log.text}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          )}
+        <div className="lg:col-span-2 h-full min-h-0">
+          <DispatchLog
+            isExpanded={isLogExpanded}
+            onToggle={() => setIsLogExpanded(!isLogExpanded)}
+            history={history}
+            historyIndex={historyIndex}
+            logs={logs}
+            currentRound={currentRound}
+            onJumpToRound={jumpToRound}
+            isHistoricalView={isHistoricalView}
+          />
         </div>
 
         {/* Center - Map (PRIMARY FOCAL POINT - LARGE) */}
-        <div className="hidden lg:flex lg:col-span-7 flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
-          <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative group min-h-[300px] lg:min-h-0">
+        <div className="hidden lg:flex lg:col-span-8 flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
+          <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 shadow-lg relative group min-h-[300px] lg:min-h-0">
             <WarRoomMap scenario={currentScenario} />
 
             <motion.button
@@ -552,173 +390,27 @@ export function WarRoomLayout() {
         </div>
 
         {/* Right Sidebar - Unit Status (collapsible) */}
-        <div className="hidden lg:flex flex-col col-span-2 bg-amber-900/5 rounded-lg border border-amber-900/10 overflow-hidden backdrop-blur-sm">
-          <button
-            onClick={() => setIsStatusExpanded(!isStatusExpanded)}
-            className="flex items-center justify-between gap-2 lg:p-3 xl:p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors flex-shrink-0"
-          >
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 flex-shrink-0 text-amber-700" />
-              <h2 className="font-serif font-bold lg:text-xs xl:text-sm text-amber-900">UNITS</h2>
-            </div>
-            {isStatusExpanded ? (
-              <ChevronUp className="w-4 h-4 text-amber-700" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-amber-700" />
-            )}
-          </button>
-
-          {isStatusExpanded && (
-            <div ref={unitsSidebarRef} className="flex-1 overflow-y-auto space-y-2 lg:p-2 xl:p-3">
-              {currentScenario.units.map((unit) => {
-                const isSelected = selectedUnit?.id === unit.id
-                return (
-                  <motion.div
-                    key={unit.id}
-                    data-unit-id={unit.id}
-                    onClick={() => useTargetingStore.getState().selectUnit(unit)}
-                    className={`
-                      lg:p-3 xl:p-4 rounded-lg text-xs border-l-4 transition-all font-serif relative cursor-pointer
-                      hover:shadow-md hover:scale-[1.02] transform-gpu
-                      ${isSelected 
-                        ? 'ring-2 ring-amber-400 ring-offset-1 shadow-lg bg-gradient-to-r' 
-                        : 'hover:bg-amber-50/30'
-                      }
-                      ${
-                        unit.owner === "player"
-                          ? `border-blue-500 ${isSelected ? 'from-blue-100 to-blue-50' : 'bg-blue-50/50'} text-blue-900`
-                          : `border-red-500 ${isSelected ? 'from-red-100 to-red-50' : 'bg-red-50/50'} text-red-900`
-                      }
-                    `}
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {/* Selection Indicator */}
-                    {isSelected && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center"
-                      >
-                        <div className="w-2 h-2 bg-white rounded-full" />
-                      </motion.div>
-                    )}
-
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {/* Unit Type Icon */}
-                        <div className={`
-                          w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                          ${unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"}
-                        `}>
-                          {unit.type === 'infantry' ? '⊠' : 
-                           unit.type === 'armor' ? '◯' : 
-                           unit.type === 'cavalry' ? '∇' : '⚡'}
-                        </div>
-                        <div>
-                          <div className="font-bold lg:text-xs xl:text-sm leading-tight">{unit.name}</div>
-                          <div className="text-xs opacity-75 capitalize">{unit.type}</div>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
-                        unit.owner === "player" ? "bg-blue-600 text-white" : "bg-red-600 text-white"
-                      }`}>
-                        {unit.owner === "player" ? currentScenario.playerPolity : currentScenario.enemyPolity}
-                      </span>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {unit.tags.slice(0, 2).map((tag, idx) => (
-                        <span key={idx} className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
-                          {tag}
-                        </span>
-                      ))}
-                      {unit.tags.length > 2 && (
-                        <span className="text-[10px] text-amber-600">+{unit.tags.length - 2} more</span>
-                      )}
-                    </div>
-
-                    {/* Status */}
-                    {unit.status && (
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          unit.status === 'fresh' ? 'bg-green-500' :
-                          unit.status === 'engaged' ? 'bg-orange-500' :
-                          unit.status === 'wavering' ? 'bg-red-500' : 'bg-gray-500'
-                        }`} />
-                        <span className="text-xs opacity-80 uppercase tracking-wider">
-                          {unit.status}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Position Info */}
-                    {unit.hex && (
-                      <div className="text-[10px] opacity-60 mt-1">
-                        Hex: ({unit.hex.q}, {unit.hex.r})
-                      </div>
-                    )}
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
+        <div className="lg:col-span-2 h-full min-h-0">
+          <UnitsPanel
+            isExpanded={isStatusExpanded}
+            onToggle={() => setIsStatusExpanded(!isStatusExpanded)}
+            currentScenario={currentScenario}
+            selectedUnit={selectedUnit}
+          />
         </div>
       </div>
 
       {/* Tactical Hand - Collapsible Panel (Desktop Only) */}
-      <div className="hidden lg:block border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0">
-        <button
-          onClick={() => setIsTacticalExpanded(!isTacticalExpanded)}
-          className="flex items-center justify-between gap-2 lg:p-3 xl:p-4 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors w-full text-left"
-        >
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 flex-shrink-0 text-amber-700" />
-            <h2 className="font-serif font-bold lg:text-xs xl:text-sm text-amber-900">TACTICAL OPTIONS</h2>
-          </div>
-          {isTacticalExpanded ? (
-            <ChevronUp className="w-4 h-4 text-amber-700" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-amber-700" />
-          )}
-        </button>
-
-        <AnimatePresence>
-          {isTacticalExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="overflow-hidden"
-            >
-              <div className="lg:px-4 xl:px-6 lg:py-2 xl:py-3 sm:py-4">
-                <div className="flex gap-3 justify-center flex-wrap lg:max-h-24 xl:max-h-32 overflow-y-auto pb-2">
-                  {currentScenario.options.map((option) => (
-                    <CatalystCard 
-                       key={option.id} 
-                       option={option} 
-                       disabled={isHistoricalView}
-                    />
-                  ))}
-                </div>
-
-                {selectedTactic && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={handleCommit}
-                    className="w-full mt-3 py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white font-serif font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md hover:shadow-lg"
-                  >
-                    <Check className="w-4 h-4" />
-                    CONFIRM & ADVANCE ROUND
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="hidden lg:block">
+        <TacticalPanel
+          isExpanded={isTacticalExpanded}
+          onToggle={() => setIsTacticalExpanded(!isTacticalExpanded)}
+          currentScenario={currentScenario}
+          selectedTactic={selectedTactic}
+          isHistoricalView={isHistoricalView}
+          onCommit={handleCommit}
+          isAnimating={isAnimating}
+        />
       </div>
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
@@ -735,78 +427,5 @@ export function WarRoomLayout() {
       </AnimatePresence>
 
     </div>
-  )
-}
-
-function HelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-amber-50 rounded-lg shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto border border-amber-900/20 backdrop-blur-sm"
-          >
-            <div className="p-6">
-              <h2 className="text-2xl font-serif font-bold text-amber-900 mb-4">War Room Guide</h2>
-
-              <div className="space-y-4 text-amber-900/80 text-sm font-serif">
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">What is the War Room?</h3>
-                  <p>
-                    The War Room is an interactive tactical command center where you issue strategic orders. Preview
-                    maneuvers visually before committing to your next battle round.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">Scenarios</h3>
-                  <p>
-                    Switch between different historical scenarios at the top. Each has unique units, maps, and tactical
-                    options.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">Main Map</h3>
-                  <p>
-                    The central parchment map shows all terrain regions, friendly units (blue), and enemy units (red).
-                    Unit status rings show cohesion: solid=fresh, dashed=engaged, broken=wavering, grey=routing.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">Tactical Options</h3>
-                  <p>
-                    Click a tactic card to see arrows on the map showing the planned strategy. Click "CONFIRM & ADVANCE
-                    ROUND" to execute the maneuver and advance to the next battle round.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">How to Command</h3>
-                  <p>
-                    1) Use scenario switcher to choose a battle
-                    <br />
-                    2) Click a tactic card (arrows appear on map)
-                    <br />
-                    3) Click "CONFIRM & ADVANCE ROUND" to execute and see results
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   )
 }

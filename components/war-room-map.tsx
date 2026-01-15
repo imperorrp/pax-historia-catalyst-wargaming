@@ -232,6 +232,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const [lastPinchDist, setLastPinchDist] = useState<number | null>(null)
 
   const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     const scaleSensitivity = 0.001
     const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * scaleSensitivity), 4)
@@ -1053,7 +1054,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         </div>
         
         {/* Zoom Controls */}
-        <div className="absolute bottom-6 right-6 flex flex-col gap-2 bg-white/80 backdrop-blur rounded-lg shadow border border-stone-200 p-1">
+        <div className="absolute top-16 right-4 flex flex-col gap-2 bg-white/80 backdrop-blur rounded-lg shadow border border-stone-200 p-1 z-20">
           <button 
             onClick={() => setTransform(p => ({...p, scale: Math.min(4, p.scale + 0.2)}))}
             className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold"

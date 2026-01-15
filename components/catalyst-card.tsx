@@ -33,9 +33,9 @@ export function CatalystCard({ option, disabled = false }: CatalystCardProps) {
       whileTap={disabled ? {} : { scale: 0.97 }}
       disabled={disabled}
       className={`
-        relative group flex flex-col items-start justify-between p-3 rounded-lg
+        relative group flex flex-col items-start justify-between p-2 rounded-lg
         border-2 transition-all flex-shrink-0 cursor-pointer
-        sm:w-56 w-48 min-h-[5.5rem]
+        sm:w-52 w-44 min-h-[4.5rem]
         ${disabled 
             ? "opacity-50 cursor-not-allowed grayscale bg-gray-100 border-gray-300"
             : isActive
@@ -45,12 +45,12 @@ export function CatalystCard({ option, disabled = false }: CatalystCardProps) {
       `}
     >
       <div className="text-left w-full h-full flex flex-col">
-        <h3 className={`font-serif font-bold text-sm leading-tight transition-colors ${
+        <h3 className={`font-serif font-bold text-xs leading-tight transition-colors ${
           disabled ? "text-gray-600" : "text-amber-900"
         }`}>
           {option.title}
         </h3>
-        <p className={`text-xs mt-1.5 transition-colors flex-grow ${
+        <p className={`text-[10px] mt-1 transition-colors flex-grow ${
            disabled ? "text-gray-500" : "text-amber-800/80"
         }`}>
           {option.description}
