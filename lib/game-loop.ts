@@ -68,6 +68,9 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
   return {
     ...scenario,
     units: updatedUnits.filter(Boolean),
+    options: response.next_options && response.next_options.length > 0 
+      ? response.next_options 
+      : scenario.options,
   }
 }
 
@@ -77,37 +80,34 @@ function getWeatherForRound(round: number): string {
 }
 
 export function getInitialPayload(tacticId: string): AIGameResponse | null {
-  // Map tactic IDs to sample payloads based on scenario context
-  const payloadMap: Record<string, keyof typeof SAMPLE_PAYLOADS> = {
-    // WW2 Blitzkrieg tactics
-    opt_1: "ww2_flank_left_success", // Flank Left → Success example
-    opt_2: "ww2_flank_left_failure", // Frontal Assault → Failure example
-    opt_3: "ww2_flank_left_success", // Encirclement → Success
-
-    // Napoleonic tactics
-    nopt_1: "napoleonic_assault_success", // Breakthrough Center
-    nopt_2: "napoleonic_assault_success", // Feint Right Flank
-    nopt_3: "napoleonic_assault_success", // Supply Interdiction
-    nopt_4: "napoleonic_assault_success", // Cavalry Charge
-
-    // Medieval tactics
-    medopt_1: "medieval_siege_success", // Bombard Walls
-    medopt_2: "medieval_siege_success", // Fortify Siege Lines
-    medopt_3: "medieval_siege_success", // Infiltrate Supply
-    medopt_4: "medieval_siege_success", // Night Raid
-    medopt_5: "medieval_siege_success", // Suppress Garrison
-    medopt_6: "medieval_siege_success", // Bridge Control
-    
-    // Three Kingdoms
-    tk_opt_1: "three_kingdoms_fire_success",
-    tk_opt_2: "medieval_siege_success", // Recycle generic success for now
-    
-    // Hydaspes
-    hyd_opt_1: "hydaspes_stampede",
-    hyd_opt_2: "hydaspes_stampede",
-    hyd_opt_3: "hydaspes_stampede",
+  // Direct lookup for new scenarios where payload key matches tactic ID
+  if (SAMPLE_PAYLOADS[tacticId]) {
+    return SAMPLE_PAYLOADS[tacticId]
   }
 
-  const payloadKey = payloadMap[tacticId] || "ww2_flank_left_success"
-  return SAMPLE_PAYLOADS[payloadKey] || null
+  // Fallback map for legacy/development IDs
+  const legacyMap: Record<string, keyof typeof SAMPLE_PAYLOADS> = {
+    // Blitzkrieg
+    opt_1: "bk_opt_panzer",
+    opt_2: "bk_opt_ardennes",
+    opt_3: "bk_opt_combined",
+    
+    // Austerlitz (if old IDs are used)
+    nopt_1: "nopt_main",
+    nopt_2: "nopt_feint",
+    nopt_3: "nopt_combined",
+
+    // Hydaspes
+    hyd_opt_1: "hyd_opt_1", 
+    // ... others map 1:1 usually
+  }
+
+  const mappedKey = legacyMap[tacticId]
+  if (mappedKey && SAMPLE_PAYLOADS[mappedKey]) {
+    return SAMPLE_PAYLOADS[mappedKey]
+  }
+
+  // Final fallback to prevent crash
+  console.warn(`No payload found for tacticId: ${tacticId}`)
+  return SAMPLE_PAYLOADS["bk_opt_panzer"] || null
 }

@@ -82,7 +82,9 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
               
               <div className="space-y-2 text-xs font-mono">
                 <InfoRow label="ID" value={selectedTactic.id} />
-                <InfoRow label="Action Type" value={selectedTactic.semanticAction} />
+                {selectedTactic.semanticAction && (
+                  <InfoRow label="Action Type" value={selectedTactic.semanticAction} />
+                )}
                 <InfoRow label="Target Logic" value={selectedTactic.targetLogic || "nearest"} />
                 {selectedTactic.targetRegionId && (
                   <InfoRow label="Target Region" value={selectedTactic.targetRegionId} />
@@ -202,7 +204,7 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
                 <div className="font-bold text-slate-900 mb-2">{option.title}</div>
                 <div className="space-y-1 font-mono text-[10px] mb-2">
                   <InfoRow label="ID" value={option.id} compact />
-                  <InfoRow label="Action" value={option.semanticAction} compact />
+                  {option.semanticAction && <InfoRow label="Action" value={option.semanticAction} compact />}
                   <InfoRow label="Target Logic" value={option.targetLogic || "nearest"} compact />
                   {option.targetRegionId && <InfoRow label="Region" value={option.targetRegionId} compact />}
                   {option.requiredUnitTypes && <InfoRow label="Required Units" value={option.requiredUnitTypes.join(", ")} compact />}

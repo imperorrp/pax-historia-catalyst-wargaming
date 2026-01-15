@@ -48,9 +48,6 @@ export const hydaspes: WarRoomScenario = {
       {
         id: "hyd_opt_1", title: "Cavalry Encirclement",
         description: "Send Alexander and the Companions to cross upstream and strike the enemy rear.",
-        semanticAction: "ENCIRCLE",
-        targetLogic: "rear",
-        requiredUnitTypes: ["cavalry"],
         compositeActions: [
            { semanticAction: "ENCIRCLE", targetLogic: "rear", requiredUnitTypes: ["cavalry"], description: "Cross upstream and flank" },
            { semanticAction: "SPEARHEAD", targetLogic: "rear", requiredUnitTypes: ["cavalry"], description: "Strike enemy rear" }
@@ -59,9 +56,6 @@ export const hydaspes: WarRoomScenario = {
       {
         id: "hyd_opt_2", title: "Target the Elephants",
         description: "Order light infantry to rain arrows on the beasts to cause a stampede.",
-        semanticAction: "RAIN_ARROWS",
-        targetLogic: "nearest",
-        requiredUnitTypes: ["infantry"],
         compositeActions: [
            { semanticAction: "RAIN_ARROWS", targetLogic: "nearest", requiredUnitTypes: ["infantry"], description: "Arrow barrage on elephants" },
            { semanticAction: "SUPPRESS", targetLogic: "nearest", requiredUnitTypes: ["infantry"], description: "Cause stampede" }
@@ -70,9 +64,6 @@ export const hydaspes: WarRoomScenario = {
       {
         id: "hyd_opt_3", title: "Phalanx Advance",
         description: "Lock shields and push across the river banks.",
-        semanticAction: "ADVANCE",
-        targetLogic: "center_mass",
-        requiredUnitTypes: ["infantry"],
         compositeActions: [
            { semanticAction: "ADVANCE", targetLogic: "center_mass", requiredUnitTypes: ["infantry"], description: "Phalanx push" },
            { semanticAction: "HOLD", targetLogic: "center_mass", requiredUnitTypes: ["infantry"], description: "Maintain formation" }
@@ -81,9 +72,6 @@ export const hydaspes: WarRoomScenario = {
       {
         id: "hyd_opt_4", title: "Elephant Counter",
         description: "Use cavalry to harass and disrupt the elephant charge before it reaches the lines.",
-        semanticAction: "SUPPRESS",
-        targetLogic: "nearest",
-        requiredUnitTypes: ["cavalry"],
         compositeActions: [
            { semanticAction: "SUPPRESS", targetLogic: "nearest", requiredUnitTypes: ["cavalry"], description: "Harass elephants" },
            { semanticAction: "FEINT", targetLogic: "nearest", requiredUnitTypes: ["cavalry"], description: "Draw them out" },

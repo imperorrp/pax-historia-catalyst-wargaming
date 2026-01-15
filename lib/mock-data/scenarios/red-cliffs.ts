@@ -65,8 +65,6 @@ export const redCliffs: WarRoomScenario = {
         id: "tk_opt_fire",
         title: "The Fire Attack",
         description: "Launch fire ships into the chained enemy fleet using the Southeast wind—Zhou Yu's masterstroke.",
-        semanticAction: "FIRE_SHIP",
-        requiredUnitTypes: ["cavalry"],
         compositeActions: [
            { semanticAction: "FEINT", targetLogic: "center_mass", requiredUnitTypes: ["cavalry"], description: "False defection to position ships" },
            { semanticAction: "FIRE_SHIP", targetLogic: "center_mass", requiredUnitTypes: ["cavalry"], description: "Launch fire ships" }
@@ -77,8 +75,6 @@ export const redCliffs: WarRoomScenario = {
         id: "tk_opt_naval",
         title: "Naval Combat",
         description: "Engage enemy vessels in close combat and ram their chained formation.",
-        semanticAction: "NAVAL_RAM",
-        requiredUnitTypes: ["infantry"],
         compositeActions: [
            { semanticAction: "NAVAL_RAM", targetLogic: "nearest", requiredUnitTypes: ["infantry"], description: "Ram and board vessels" },
            { semanticAction: "SUPPRESS", targetLogic: "center_mass", requiredUnitTypes: ["infantry"], description: "Archers provide covering fire" }
@@ -88,9 +84,6 @@ export const redCliffs: WarRoomScenario = {
         id: "tk_opt_raid",
         title: "Shoreline Disruption",
         description: "Raid northern camps to disrupt supplies and morale while targeting barges.",
-        semanticAction: "SEVER_SUPPLY",
-        targetRegionId: "north-bank",
-        requiredUnitTypes: ["cavalry", "infantry"],
         compositeActions: [
            { semanticAction: "INFILTRATE", targetLogic: "specific_region", targetRegionId: "north-bank", requiredUnitTypes: ["cavalry"], description: "Shoreline raid" },
            { semanticAction: "SEVER_SUPPLY", targetLogic: "specific_region", targetRegionId: "north-bank", requiredUnitTypes: ["infantry"], description: "Target supply barges" }
@@ -100,9 +93,6 @@ export const redCliffs: WarRoomScenario = {
         id: "tk_opt_combined",
         title: "Combined River Assault",
         description: "Coordinate all forces for a synchronized attack on the armada.",
-        semanticAction: "COMBINED_ASSAULT",
-        targetRegionId: "yangtze-river",
-        requiredUnitTypes: ["cavalry", "infantry"],
         compositeActions: [
            { semanticAction: "FIRE_SHIP", targetLogic: "center_mass", requiredUnitTypes: ["cavalry"], description: "Fire ships" },
            { semanticAction: "NAVAL_RAM", targetLogic: "nearest", requiredUnitTypes: ["infantry"], description: "Naval combat" },

@@ -31,6 +31,7 @@ export interface CompositeActionDef {
   semanticAction: VisualActionType;
   targetLogic?: TargetLogic;
   targetRegionId?: string;
+  targetUnitId?: string;
   requiredUnitTypes?: string[];
   description?: string;
 }
@@ -99,18 +100,19 @@ export type TargetLogic =
   | "flank_left"     // Target enemy's rightmost unit (their flank)
   | "flank_right"    // Target enemy's leftmost unit
   | "rear"           // Target enemy furthest back
-  | "specific_region"; // Target a specific geographic ID
+  | "specific_region" // Target a specific geographic ID
+  | "specific_unit"   // Target a particular unit ID
 
 export interface CatalystOption {
   id: string
   title: string
   description: string
-  semanticAction: VisualActionType
-  targetLogic?: TargetLogic // NEW: Hints the map where to draw arrows
-  targetRegionId?: string   // NEW: For specific regional attacks
+  semanticAction?: VisualActionType // Made optional for composite-only actions
+  targetLogic?: TargetLogic
+  targetRegionId?: string
   requiredUnitTypes?: ("armor" | "infantry" | "cavalry" | "artillery" | "elephant" | "chariot" | "naval")[]
-  visualEffects?: string[]; // NEW: List of effects to trigger
-  compositeActions?: CompositeActionDef[]; // NEW: Multiple actions in one option
+  visualEffects?: string[];
+  compositeActions?: CompositeActionDef[]; // Main source of action logic
 }
 
 export interface MapRegion {
@@ -119,7 +121,7 @@ export interface MapRegion {
   points: [number, number][]
   neighbors: string[]; // IDs of adjacent regions
   features?: MapFeature[];
-  terrain?: "plains" | "forest" | "mountain" | "urban" | "river" | "swamp" | "mud"
+  terrain?: "plains" | "forest" | "mountain" | "urban" | "river" | "swamp" | "mud" | "water" | "ocean"
   isFort?: boolean
   isCity?: boolean
   gridScale?: number // New: Grid density for this region (e.g. 10)
@@ -162,7 +164,13 @@ export type VisualActionType =
   | "FIRE_SHIP"      // Unit becomes a projectile
   | "GATES_OPEN"     // Sabotage action
   | "TRAMPLE"        // Elephant charge
-  | "RAIN_ARROWS";   // Massed archery
+  | "RAIN_ARROWS"    // Massed archery
+  // NAVAL ACTIONS
+  | "BROADSIDES"     // Massed cannon fire from ship sides
+  | "RAKING_FIRE"    // Fire along ship length
+  | "BOARDING"       // Close combat boarding action
+  | "MANEUVER"      // Tactical ship movement
+  | "LINE_OF_BATTLE"; // Form a parallel line to enemy formation
 
 export interface VisualPlan {
   title: string

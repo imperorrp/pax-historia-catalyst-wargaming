@@ -113,10 +113,6 @@ export const blitzkrieg: WarRoomScenario = {
         id: "bk_opt_panzer",
         title: "Panzer Thrust",
         description: "Concentrate armor for a lightning breakthrough through the Sedan sector.",
-        semanticAction: "SPEARHEAD",
-        targetLogic: "specific_region",
-        targetRegionId: "sedan-plains",
-        requiredUnitTypes: ["armor"],
         compositeActions: [
            { semanticAction: "SPEARHEAD", targetLogic: "specific_region", targetRegionId: "sedan-plains", requiredUnitTypes: ["armor"], description: "Armor concentration" },
            { semanticAction: "ADVANCE", targetLogic: "specific_region", targetRegionId: "sedan-plains", requiredUnitTypes: ["armor"], description: "Rapid advance" }
@@ -126,10 +122,6 @@ export const blitzkrieg: WarRoomScenario = {
         id: "bk_opt_ardennes",
         title: "Ardennes Maneuver",
         description: "Use the forest cover for a surprise flanking attack.",
-        semanticAction: "INFILTRATE",
-        targetLogic: "specific_region",
-        targetRegionId: "ardennes-forest",
-        requiredUnitTypes: ["armor", "infantry"],
         compositeActions: [
            { semanticAction: "INFILTRATE", targetLogic: "specific_region", targetRegionId: "ardennes-forest", requiredUnitTypes: ["armor"], description: "Forest infiltration" },
            { semanticAction: "FLANK_LEFT", targetLogic: "specific_region", targetRegionId: "ardennes-forest", requiredUnitTypes: ["infantry"], description: "Flanking maneuver" }
@@ -139,10 +131,6 @@ export const blitzkrieg: WarRoomScenario = {
         id: "bk_opt_artillery",
         title: "Artillery Barrage",
         description: "Bombard the Maginot Line defenses to soften them up.",
-        semanticAction: "REGION_BOMBARDMENT",
-        targetLogic: "specific_region",
-        targetRegionId: "maginot-line",
-        requiredUnitTypes: ["artillery"],
         compositeActions: [
            { semanticAction: "REGION_BOMBARDMENT", targetLogic: "specific_region", targetRegionId: "maginot-line", requiredUnitTypes: ["artillery"], description: "Bombard fortifications" },
            { semanticAction: "SUPPRESS", targetLogic: "specific_region", targetRegionId: "maginot-line", requiredUnitTypes: ["artillery"], description: "Suppress defenders" }
@@ -153,10 +141,6 @@ export const blitzkrieg: WarRoomScenario = {
         id: "bk_opt_combined",
         title: "Blitzkrieg Assault",
         description: "Coordinate all forces for a synchronized armored breakthrough.",
-        semanticAction: "COMBINED_ASSAULT",
-        targetLogic: "specific_region",
-        targetRegionId: "sedan-plains",
-        requiredUnitTypes: ["armor", "infantry", "artillery"],
         compositeActions: [
            { semanticAction: "SPEARHEAD", targetLogic: "specific_region", targetRegionId: "sedan-plains", requiredUnitTypes: ["armor"], description: "Armor breakthrough" },
            { semanticAction: "ADVANCE", targetLogic: "specific_region", targetRegionId: "sedan-plains", requiredUnitTypes: ["infantry"], description: "Infantry follow-up" },

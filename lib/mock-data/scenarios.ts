@@ -8,6 +8,7 @@ import { austerlitz } from "./scenarios/austerlitz"
 import { medievalSiege } from "./scenarios/medieval-siege"
 import { redCliffs } from "./scenarios/red-cliffs"
 import { hydaspes } from "./scenarios/hydaspes"
+import { trafalgar } from "./scenarios/trafalgar"
 
 export const SCENARIOS: Record<string, WarRoomScenario> = {
   ww2_blitzkrieg: blitzkrieg,
@@ -15,6 +16,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
   medieval_siege: medievalSiege,
   three_kingdoms_red_cliffs: redCliffs,
   ancient_india_hydaspes: hydaspes,
+  napoleonic_trafalgar: trafalgar,
 }
 
 export const MOCK_SCENARIO = SCENARIOS.ww2_blitzkrieg

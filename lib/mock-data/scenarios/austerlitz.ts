@@ -137,10 +137,6 @@ export const austerlitz: WarRoomScenario = {
         id: "nopt_main",
         title: "Pratzen Masterstroke",
         description: "The decisive assault: artillery barrage followed by infantry spearhead at the heights.",
-        semanticAction: "COMBINED_ASSAULT",
-        targetLogic: "specific_region",
-        targetRegionId: "pratzen-heights",
-        requiredUnitTypes: ["artillery", "infantry"],
         compositeActions: [
            { semanticAction: "BOMBARD", targetLogic: "specific_region", targetRegionId: "pratzen-heights", requiredUnitTypes: ["artillery"], description: "Concentrate artillery on the heights" },
            { semanticAction: "SPEARHEAD", targetLogic: "specific_region", targetRegionId: "pratzen-heights", requiredUnitTypes: ["infantry"], description: "Pierce the Austrian center" }
@@ -151,9 +147,6 @@ export const austerlitz: WarRoomScenario = {
          id: "nopt_feint",
          title: "Feint & Encircle",
          description: "Attack the Russian right to draw reserves, then encircle with cavalry shock.",
-         semanticAction: "ENCIRCLE",
-         targetLogic: "flank_right",
-         requiredUnitTypes: ["cavalry", "infantry"],
          compositeActions: [
            { semanticAction: "FEINT", targetLogic: "flank_right", requiredUnitTypes: ["infantry"], description: "Draw enemy reserves to the right" },
            { semanticAction: "ENCIRCLE", targetLogic: "center_mass", requiredUnitTypes: ["cavalry"], description: "Cavalry encirclement to shatter morale" }
@@ -163,9 +156,6 @@ export const austerlitz: WarRoomScenario = {
          id: "nopt_combined",
          title: "Combined Arms Sequence",
          description: "Coordinate artillery, cavalry, and infantry in devastating sequence.",
-         semanticAction: "COMBINED_ASSAULT",
-         targetLogic: "center_mass",
-         requiredUnitTypes: ["artillery", "cavalry", "infantry"],
          compositeActions: [
             { semanticAction: "BOMBARD", targetLogic: "center_mass", requiredUnitTypes: ["artillery"], description: "Artillery preparation" },
             { semanticAction: "ENCIRCLE", targetLogic: "center_mass", requiredUnitTypes: ["cavalry"], description: "Cavalry encirclement" },
@@ -176,10 +166,9 @@ export const austerlitz: WarRoomScenario = {
          id: "nopt_heights",
          title: "Heights Bombardment",
          description: "Concentrate artillery fire on Pratzen Heights with visual barrage effects.",
-         semanticAction: "REGION_BOMBARDMENT",
-         targetLogic: "specific_region",
-         targetRegionId: "pratzen-heights",
-         requiredUnitTypes: ["artillery"],
+         compositeActions: [
+            { semanticAction: "REGION_BOMBARDMENT", targetLogic: "specific_region", targetRegionId: "pratzen-heights", requiredUnitTypes: ["artillery"], description: "Concentrate fire" }
+         ],
          visualEffects: ["explosion", "smoke", "cannon_fire"]
       }
     ]

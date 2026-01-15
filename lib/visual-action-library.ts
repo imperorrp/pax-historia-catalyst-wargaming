@@ -783,6 +783,189 @@ export function drawCOMBINED_ASSAULT({ ctx, from, to, opacity = 1 }: DrawingCont
   ctx.globalAlpha = 1
 }
 
+export function drawBROADSIDES({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#e74c3c"
+  ctx.lineWidth = 8
+  ctx.fillStyle = "#e74c3c"
+
+  // Multiple cannon blasts from side of ship
+  for (let i = 0; i < 5; i++) {
+    const offset = (i - 2) * 15
+    const perpAng = ang + Math.PI / 2
+    const blastX = from.x + Math.cos(perpAng) * offset
+    const blastY = from.y + Math.sin(perpAng) * offset
+
+    ctx.beginPath()
+    ctx.arc(blastX, blastY, 8, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Smoke trail
+    ctx.strokeStyle = "rgba(127, 140, 141, 0.6)"
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(blastX, blastY)
+    ctx.lineTo(blastX + Math.cos(ang) * 30, blastY + Math.sin(ang) * 30)
+    ctx.stroke()
+  }
+
+  ctx.globalAlpha = 1
+}
+
+export function drawRAKING_FIRE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#f39c12"
+  ctx.lineWidth = 6
+
+  // Long sweeping fire along the ship
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+
+  // Multiple impact points
+  ctx.fillStyle = "#e67e22"
+  for (let i = 0; i < 8; i++) {
+    const t = i / 7
+    const x = from.x + (to.x - from.x) * t
+    const y = from.y + (to.y - from.y) * t
+    ctx.beginPath()
+    ctx.arc(x, y, 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.globalAlpha = 1
+}
+
+export function drawBOARDING({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#9b59b6"
+  ctx.lineWidth = 4
+  ctx.fillStyle = "#9b59b6"
+
+  // Grappling hooks
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+
+  // Boarding party arrows
+  const numArrows = 3
+  for (let i = 0; i < numArrows; i++) {
+    const t = 0.3 + (i * 0.2)
+    const x = from.x + (to.x - from.x) * t
+    const y = from.y + (to.y - from.y) * t
+    drawArrowHead(ctx, { x, y }, ang, 15, "#9b59b6")
+  }
+
+  ctx.globalAlpha = 1
+}
+
+export function drawMANEUVER({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  const dist = distance(from, to)
+  const ang = angle(from, to)
+
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "#3498db"
+  ctx.lineWidth = 5
+  ctx.setLineDash([10, 5])
+
+  // Curved maneuver path
+  const cp = getControlPoint(from, to, 50)
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y)
+  ctx.stroke()
+
+  // Ship silhouette at end
+  ctx.setLineDash([])
+  ctx.fillStyle = "#2980b9"
+  ctx.beginPath()
+  ctx.ellipse(to.x, to.y, 12, 6, ang, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.globalAlpha = 1
+}
+
+export function drawLINE_OF_BATTLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
+  // Draw a visible parallel line (line of battle) offset from the target vector,
+  // with small ship silhouettes along it to indicate a formed line.
+  const ang = angle(from, to)
+  const perp = ang + Math.PI / 2
+  const center = to
+  // Use distance as base length, but clamp to a reasonable visual size
+  const baseDist = Math.max(220, distance(from, to) * 1.2)
+  const half = baseDist / 2
+  const offset = 50 // perpendicular offset so it's clearly parallel
+
+  const start = {
+    x: center.x - Math.cos(ang) * half - Math.cos(perp) * offset,
+    y: center.y - Math.sin(ang) * half - Math.sin(perp) * offset,
+  }
+  const end = {
+    x: center.x + Math.cos(ang) * half - Math.cos(perp) * offset,
+    y: center.y + Math.sin(ang) * half - Math.sin(perp) * offset,
+  }
+
+  ctx.globalAlpha = opacity
+
+  // Strong guiding line
+  ctx.strokeStyle = "rgba(44, 62, 80, 0.9)"
+  ctx.lineWidth = 6
+  ctx.setLineDash([12, 8])
+  ctx.beginPath()
+  ctx.moveTo(start.x, start.y)
+  ctx.lineTo(end.x, end.y)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  // Draw ship silhouettes along the line
+  const ships = 6
+  for (let i = 0; i < ships; i++) {
+    const t = i / (ships - 1)
+    const x = start.x + (end.x - start.x) * t
+    const y = start.y + (end.y - start.y) * t
+
+    // Slight stagger for visual variety
+    const wiggle = (Math.sin(i * 2.3) * 6)
+
+    ctx.save()
+    ctx.translate(x + Math.cos(perp) * wiggle, y + Math.sin(perp) * wiggle)
+    ctx.rotate(ang)
+    ctx.fillStyle = "rgba(34, 49, 63, 0.95)"
+    ctx.beginPath()
+    ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2)
+    ctx.fill()
+    // Mast / flag indicator
+    ctx.strokeStyle = "rgba(241, 196, 15, 0.9)"
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.moveTo(4, -2)
+    ctx.lineTo(4, -14)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // Subtle glow under the line to improve contrast on water
+  ctx.beginPath()
+  ctx.strokeStyle = "rgba(52, 152, 219, 0.12)"
+  ctx.lineWidth = 18
+  ctx.moveTo(start.x, start.y)
+  ctx.lineTo(end.x, end.y)
+  ctx.stroke()
+
+  ctx.globalAlpha = 1
+}
+
 export function renderVisualAction(action: VisualActionType, context: DrawingContext): boolean {
   const renderers: Record<VisualActionType, (ctx: DrawingContext) => void> = {
     ADVANCE: drawADVANCE,
@@ -813,6 +996,11 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
     GATES_OPEN: drawINFILTRATE,
     TRAMPLE: drawTRAMPLE,
     RAIN_ARROWS: drawRAIN_ARROWS,
+    BROADSIDES: drawBROADSIDES,
+    RAKING_FIRE: drawRAKING_FIRE,
+    BOARDING: drawBOARDING,
+    MANEUVER: drawMANEUVER,
+    LINE_OF_BATTLE: drawLINE_OF_BATTLE,
   }
 
   const renderer = renderers[action]

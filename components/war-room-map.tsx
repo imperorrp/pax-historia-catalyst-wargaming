@@ -163,7 +163,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         scenario.options.forEach((tactic) => {
           const actionsToRender = tactic.compositeActions && tactic.compositeActions.length > 0
             ? tactic.compositeActions
-            : [{ semanticAction: tactic.semanticAction, targetLogic: tactic.targetLogic, targetRegionId: tactic.targetRegionId }]
+            : [{ semanticAction: tactic.semanticAction, targetLogic: tactic.targetLogic, targetRegionId: tactic.targetRegionId, requiredUnitTypes: tactic.requiredUnitTypes }]
 
           actionsToRender.forEach((action) => {
             if (action.requiredUnitTypes && !action.requiredUnitTypes.includes(playerUnit.type)) {
@@ -358,9 +358,11 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
         switch (region.terrain) {
           case 'river':
+          case 'water':
+          case 'ocean':
             // More distinct Blue, less scratchy
-            fill = isHovered ? "rgba(33, 150, 243, 0.6)" : "rgba(33, 150, 243, 0.4)"; 
-            stroke = "rgba(33, 150, 243, 0.3)"; // Faint blue border
+            fill = isHovered ? "rgba(33, 150, 243, 0.6)" : "rgba(41, 128, 185, 0.35)"; 
+            stroke = "rgba(41, 128, 185, 0.45)"; // Faint blue border
             fillStyle = "solid"; // Solid water looks better than scratchy zigzag
             roughness = 0.5; // Smooth water
             bowing = 0.2;
@@ -602,7 +604,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         // Get composite actions or fallback to single action
         const actionsToRender = tacticToDisplay.compositeActions && tacticToDisplay.compositeActions.length > 0 
           ? tacticToDisplay.compositeActions 
-          : [{ semanticAction: tacticToDisplay.semanticAction, targetLogic: tacticToDisplay.targetLogic, targetRegionId: tacticToDisplay.targetRegionId }]
+          : [{ semanticAction: tacticToDisplay.semanticAction, targetLogic: tacticToDisplay.targetLogic, targetRegionId: tacticToDisplay.targetRegionId, requiredUnitTypes: tacticToDisplay.requiredUnitTypes }]
 
         playerUnits.forEach((playerUnit) => {
           actionsToRender.forEach((action, actionIndex) => {

@@ -111,37 +111,33 @@ export function WarRoomLayout() {
 
   if (isMapMaximized) {
     return (
-      <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50 text-amber-900">
-        <WarRoomHeader
-          isHistoricalView={isHistoricalView}
-          currentRound={currentRound}
-          historyIndex={historyIndex}
-          historyLength={history.length}
-          currentScenario={currentScenario}
-          debugMode={debugMode}
-          onToggleDebug={toggleDebugMode}
-          onHelpOpen={() => setIsHelpOpen(true)}
-          onGoToPrevious={goToPreviousRound}
-          onGoToNext={goToNextRound}
-          isAnimating={isAnimating}
-        />
-
-        <div className="flex-1 overflow-hidden">
-          <div className="w-full h-full bg-amber-50 border border-amber-900/10 overflow-hidden shadow-inner relative">
-            <WarRoomMap scenario={currentScenario} />
-          </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50 text-amber-900"
+        style={{ width: '100vw', height: '100vh' }}
+      >
+        {/* Fullscreen Controls */}
+        <div className="absolute top-4 right-4 z-20 flex gap-2">
+          <motion.button
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsMapMaximized(false)}
+            className="p-3 bg-amber-900/90 hover:bg-amber-900 text-white rounded-lg transition-colors shadow-lg backdrop-blur-sm border border-amber-700/50"
+            title="Exit Fullscreen"
+          >
+            <Minimize2 className="w-6 h-6" />
+          </motion.button>
         </div>
 
-        <TacticalPanel
-          isExpanded={true}
-          onToggle={() => {}}
-          currentScenario={currentScenario}
-          selectedTactic={selectedTactic}
-          isHistoricalView={isHistoricalView}
-          onCommit={handleCommit}
-          isAnimating={isAnimating}
-        />
-      </div>
+        {/* Fullscreen Map */}
+        <div className="w-full h-full bg-amber-50 border border-amber-900/10 overflow-hidden shadow-inner relative">
+          <WarRoomMap scenario={currentScenario} />
+        </div>
+      </motion.div>
     )
   }
 
@@ -168,6 +164,17 @@ export function WarRoomLayout() {
         {/* Map Section - Visible on mobile first */}
         <div className="lg:hidden flex flex-col bg-amber-50 rounded-lg border border-amber-900/15 overflow-hidden shadow-lg relative touch-none" style={{ height: '400px', flexShrink: 0 }}>
           <WarRoomMap scenario={currentScenario} />
+          
+          <motion.button
+            initial={{ opacity: 0.7 }}
+            whileHover={{ opacity: 1, scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsMapMaximized(true)}
+            className="absolute top-4 right-4 p-3 bg-amber-900/80 hover:bg-amber-900 text-white rounded-lg transition-all duration-200 z-10 shadow-lg backdrop-blur-sm border border-amber-700/50"
+            title="Fullscreen Map"
+          >
+            <Maximize2 className="w-6 h-6" />
+          </motion.button>
         </div>
 
         {/* MOBILE: Tactical Options - No scrolling, full content */}
@@ -379,12 +386,14 @@ export function WarRoomLayout() {
             <WarRoomMap scenario={currentScenario} />
 
             <motion.button
-              initial={{ opacity: 0 }}
-              whileHover={{ opacity: 1 }}
+              initial={{ opacity: 0.7 }}
+              whileHover={{ opacity: 1, scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setIsMapMaximized(true)}
-              className="absolute top-4 right-4 p-2 bg-amber-900/10 hover:bg-amber-900/20 rounded-lg transition-colors z-10 text-amber-800 backdrop-blur-sm"
+              className="absolute top-4 right-4 p-3 bg-amber-900/80 hover:bg-amber-900 text-white rounded-lg transition-all duration-200 z-10 shadow-lg backdrop-blur-sm border border-amber-700/50"
+              title="Fullscreen Map"
             >
-              <Maximize2 className="w-5 h-5" />
+              <Maximize2 className="w-6 h-6" />
             </motion.button>
           </div>
         </div>

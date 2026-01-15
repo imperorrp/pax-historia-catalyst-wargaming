@@ -118,9 +118,6 @@ export const medievalSiege: WarRoomScenario = {
         id: "medopt_bombard",
         title: "Castle Bombardment",
         description: "Focus trebuchets and siege engines on the castle keep to create breach points.",
-        semanticAction: "REGION_BOMBARDMENT",
-        targetRegionId: "castle-keep",
-        requiredUnitTypes: ["artillery"],
         compositeActions: [
            { semanticAction: "BOMBARD", targetLogic: "specific_region", targetRegionId: "castle-keep", requiredUnitTypes: ["artillery"], description: "Systematic bombardment" },
            { semanticAction: "SUPPRESS", targetLogic: "specific_region", targetRegionId: "castle-keep", requiredUnitTypes: ["artillery"], description: "Suppressive barrage" }
@@ -131,9 +128,6 @@ export const medievalSiege: WarRoomScenario = {
         id: "medopt_assault",
         title: "Combined Escalade",
         description: "Coordinate artillery, infantry assault, and cavalry screening for breach.",
-        semanticAction: "COMBINED_ASSAULT",
-        targetRegionId: "castle-keep",
-        requiredUnitTypes: ["artillery", "infantry", "cavalry"],
         compositeActions: [
            { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "castle-keep", requiredUnitTypes: ["infantry"], description: "Escalade assault" },
            { semanticAction: "SEVER_SUPPLY", targetLogic: "specific_region", targetRegionId: "river-crossing", requiredUnitTypes: ["cavalry"], description: "Isolate the castle" }
@@ -143,9 +137,6 @@ export const medievalSiege: WarRoomScenario = {
         id: "medopt_infiltrate",
         title: "Sabotage & Infiltration",
         description: "Send scouts to infiltrate and sow panic while mining under walls.",
-        semanticAction: "INFILTRATE",
-        targetRegionId: "castle-keep",
-        requiredUnitTypes: ["cavalry", "infantry"],
         compositeActions: [
            { semanticAction: "INFILTRATE", targetLogic: "specific_region", targetRegionId: "castle-keep", requiredUnitTypes: ["cavalry"], description: "Night infiltration" },
            { semanticAction: "GATES_OPEN", targetLogic: "specific_region", targetRegionId: "castle-keep", requiredUnitTypes: ["infantry"], description: "Mining sabotage" }
