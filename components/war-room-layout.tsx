@@ -10,9 +10,11 @@ import { TacticalPanel } from "./tactical-panel"
 import { DispatchLog } from "./dispatch-log"
 import { UnitsPanel } from "./units-panel"
 import { HelpModal } from "./help-modal"
+import { CreateScenarioModal } from "./create-scenario-modal"
 import { useTargetingStore } from "@/lib/targeting-store"
-import { reconcileStateChanges, getInitialPayload } from "@/lib/game-loop"
-import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target, Bug } from "lucide-react"
+import { useAIStore } from "@/lib/ai/store"
+import { resolveTurn, reconcileStateChanges } from "@/lib/game-loop"
+import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target, Bug, AlertCircle } from "lucide-react"
 
 export function WarRoomLayout() {
   const selectedTactic = useTargetingStore((state) => state.selectedTactic)
@@ -33,12 +35,14 @@ export function WarRoomLayout() {
   const jumpToRound = useTargetingStore((state) => state.jumpToRound)
   const debugMode = useTargetingStore((state) => state.debugMode)
   const toggleDebugMode = useTargetingStore((state) => state.toggleDebugMode)
+  // removed simulatePrompt as resolveTurn handles it
 
-  const [logs, setLogs] = useState<Array<{text: string, round: number}>>([{text: "Command Center initialized.", round: 0}])
+  const [logs, setLogs] = useState<Array<{text: string, round: number, source?: 'system' | 'mock' | 'ai'}>>([{text: "Command Center initialized.", round: 0, source: 'system'}])
   const [isLogExpanded, setIsLogExpanded] = useState(true)
   const [isStatusExpanded, setIsStatusExpanded] = useState(true)
   const [isMapMaximized, setIsMapMaximized] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false)
   const unitsSidebarRef = useRef<HTMLDivElement>(null)
   const [isTacticalExpanded, setIsTacticalExpanded] = useState(true)
 
@@ -66,26 +70,48 @@ export function WarRoomLayout() {
     }
   }, [selectedUnit, isStatusExpanded])
 
+  // Reset logs when scenario changes
+  useEffect(() => {
+    setLogs([{text: `Values initialized for: ${currentScenario.name}`, round: 0, source: 'system'}])
+  }, [currentScenario.id])
+
   const handleCommit = async () => {
     if (!selectedTactic || isAnimating) return
 
     setAnimating(true)
     console.log("[v0] Starting commit for tactic:", selectedTactic.id)
 
-    const response = getInitialPayload(selectedTactic.id)
-    if (!response) {
+    // Retrieve global AI config 
+    const aiState = useAIStore.getState();
+    
+    let payload: any = null;
+
+    try {
+        // Use the centralized game loop logic which handles Mock vs Live modes correctly
+        // This function also handles updating the Transaction Store/Debug Panel
+        payload = await resolveTurn(selectedTactic.id, currentRound, currentScenario, selectedTactic);
+    } catch (e) {
+        console.error("AI Turn failed", e);
+        setAnimating(false);
+        return;
+    }
+
+    if (!payload) {
       console.error("[v0] Failed to get payload for tactic:", selectedTactic.id)
       setAnimating(false)
       return
     }
+
+    // Continue with existing game logic using the new payload
+    const response = payload;
 
     console.log("[v0] AI Response received:", response)
     setGameResponse(response)
 
     setLogs((prev) => [
       ...prev,
-      {text: `>>> ROUND ${currentRound} - ${selectedTactic.title} executed`, round: currentRound},
-      {text: `>>> ${response.narrative_update}`, round: currentRound},
+      {text: `>>> ROUND ${currentRound} - ${selectedTactic.title} executed`, round: currentRound, source: 'system'},
+      {text: `>>> ${response.narrative_update}`, round: currentRound, source: aiState.isMockMode ? 'mock' : 'ai'},
     ])
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -153,6 +179,7 @@ export function WarRoomLayout() {
         onToggleDebug={toggleDebugMode}
         onHelpOpen={() => setIsHelpOpen(true)}
         onGoToPrevious={goToPreviousRound}
+        onOpenScenario={() => setIsScenarioModalOpen(true)}
         onGoToNext={goToNextRound}
         isAnimating={isAnimating}
       />
@@ -186,15 +213,25 @@ export function WarRoomLayout() {
             </div>
           </div>
           <div className="px-3 py-3">
-            <div className="flex gap-2 justify-start flex-wrap">
-              {currentScenario.options.map((option) => (
-                <CatalystCard 
-                   key={option.id} 
-                   option={option} 
-                   disabled={isHistoricalView}
-                />
-              ))}
+             {currentScenario.options.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-4 text-amber-900/60 bg-amber-900/5 rounded-lg border border-dashed border-amber-900/20">
+                  <AlertCircle className="w-5 h-5 mb-2 opacity-50" />
+                  <p className="text-xs font-serif font-bold mb-1 text-center">END OF PRESET DATA</p>
+                  <p className="text-[10px] text-center max-w-xs leading-tight opacity-80">
+                     No more tactical options in this simulation. Reset or switch to AI.
+                  </p>
+                </div>
+            ) : (
+              <div className="flex gap-2 justify-start flex-wrap">
+                {currentScenario.options.map((option) => (
+                  <CatalystCard 
+                     key={option.id} 
+                     option={option} 
+                     disabled={isHistoricalView}
+                  />
+                ))}
             </div>
+            )}
             {selectedTactic && (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
@@ -423,6 +460,7 @@ export function WarRoomLayout() {
       </div>
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <CreateScenarioModal isOpen={isScenarioModalOpen} onClose={() => setIsScenarioModalOpen(false)} />
       
       {/* Debug Panel */}
       <AnimatePresence>
@@ -434,7 +472,6 @@ export function WarRoomLayout() {
           />
         )}
       </AnimatePresence>
-
     </div>
   )
 }

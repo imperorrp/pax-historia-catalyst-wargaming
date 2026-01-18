@@ -10,7 +10,7 @@ interface DispatchLogProps {
   onToggle: () => void
   history: any[]
   historyIndex: number
-  logs: Array<{text: string, round: number}>
+  logs: Array<{text: string, round: number, source?: 'system' | 'mock' | 'ai'}>
   currentRound: number
   onJumpToRound: (index: number) => void
   isHistoricalView: boolean
@@ -92,6 +92,17 @@ export function DispatchLog({
                   }`}
                 >
                   {log.text}
+                  {log.source && (
+                    <span className={`ml-2 text-[8px] px-1 py-0.5 rounded font-sans font-bold uppercase tracking-wider ${
+                      log.source === 'mock' 
+                        ? 'bg-amber-800/20 text-amber-900 border border-amber-900/10' 
+                        : log.source === 'ai' 
+                          ? 'bg-emerald-600/20 text-emerald-800 border border-emerald-700/20'
+                          : 'bg-gray-500/10 text-gray-600 border border-gray-500/10'
+                    }`}>
+                      {log.source === 'mock' ? 'MOCK' : log.source}
+                    </span>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>

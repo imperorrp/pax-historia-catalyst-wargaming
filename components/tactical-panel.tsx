@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, Target, ChevronUp, ChevronDown } from "lucide-react"
+import { Check, Target, ChevronUp, ChevronDown, AlertCircle } from "lucide-react"
 import { CatalystCard } from "./catalyst-card"
 import { useTargetingStore } from "@/lib/targeting-store"
+import { useAIStore } from "@/lib/ai/store"
 
 interface TacticalPanelProps {
   isExpanded: boolean
@@ -25,6 +26,8 @@ export function TacticalPanel({
   onCommit,
   isAnimating
 }: TacticalPanelProps) {
+  const { isMockMode } = useAIStore()
+
   return (
     <div className="border-t border-amber-900/10 bg-amber-50/60 backdrop-blur-sm flex-shrink-0">
       <div className="flex items-center justify-between gap-2 p-2 md:p-3 border-b border-amber-900/10 hover:bg-amber-900/5 transition-colors">
@@ -65,15 +68,29 @@ export function TacticalPanel({
             className="overflow-hidden"
           >
             <div className="p-1.5 md:p-2">
-              <div className="flex gap-1.5 md:gap-2 justify-center flex-wrap">
-                {currentScenario.options.map((option) => (
-                  <CatalystCard
-                     key={option.id}
-                     option={option}
-                     disabled={isHistoricalView}
-                  />
-                ))}
-              </div>
+              {currentScenario.options.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-4 text-amber-900/60 bg-amber-900/5 rounded-lg border border-dashed border-amber-900/20 my-2">
+                  <AlertCircle className="w-5 h-5 mb-2 opacity-50" />
+                  <p className="text-xs font-serif font-bold mb-1 text-center">
+                    {isMockMode ? "END OF MOCK DATA" : "NO TACTICAL OPTIONS AVAILABLE"}
+                  </p>
+                  <p className="text-[10px] text-center max-w-xs leading-tight opacity-80">
+                    {isMockMode 
+                      ? "This simulation path has ended. Reset the scenario or switch to AI mode for infinite gameplay generation." 
+                      : "The AI strategems have been exhausted. Check the console or reset the round."}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-1.5 md:gap-2 justify-center flex-wrap">
+                  {currentScenario.options.map((option) => (
+                    <CatalystCard
+                      key={option.id}
+                      option={option}
+                      disabled={isHistoricalView}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

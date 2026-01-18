@@ -232,8 +232,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const [lastPinchDist, setLastPinchDist] = useState<number | null>(null)
 
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    // Avoid calling preventDefault inside potentially passive listeners. We rely on CSS to prevent page scroll and only adjust zoom here.
     const scaleSensitivity = 0.001
     const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * scaleSensitivity), 4)
     setTransform(prev => ({ ...prev, scale: newScale }))
@@ -258,7 +257,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
   // Touch handlers for mobile drag support
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault()
+    // touch-action: none is enabled on the container; explicit preventDefault is not necessary and can cause passive listener warnings
     if (e.touches.length === 1) {
       setIsDragging(true)
       setLastMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY })
@@ -274,8 +273,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault()
-    
+    // touch-action: none is enabled on the container; explicit preventDefault is not necessary and can cause passive listener warnings
     if (e.touches.length === 1 && isDragging) {
       // Single finger drag
       const dx = e.touches[0].clientX - lastMousePos.x
@@ -853,6 +851,9 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     setIsRendered(true)
   }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers, hoveredRegion, debugMode]) // Fixed dep array to prevent rerenders
 
+  const [clientReady, setClientReady] = useState(false);
+  useEffect(() => { setClientReady(true) }, []);
+
   // --- IMPROVED LABEL RENDERING WITH VORONOI CENTROIDS ---
   const renderLabels = () => {
     if (!visibleLayers.regions) return null;
@@ -903,6 +904,9 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       // Early exit if no collisions found
       if (!hasCollisions) break;
     }
+
+    // Only render dynamic positioning on the client to avoid SSR/CSR mismatches
+    if (!clientReady) return null;
 
     return (
       <div className="absolute inset-0 pointer-events-none z-20">
@@ -1187,6 +1191,19 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
           </motion.div>
         </motion.div>
       )}
+
+      <div className="absolute inset-0 pointer-events-none z-40 select-none">
+        {/* Vignette Shadow */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(60,40,20,0.3)_100%)]" />
+        
+        {/* Paper Grain (Optional, if not using canvas noise) */}
+        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')]" />
+        
+        {/* Grid Lines Overlay (Optional stylistic choice) */}
+        {visibleLayers.grid && (
+           <div className="absolute inset-0 opacity-5 bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:100px_100px]" />
+        )}
+      </div>
     </motion.div>
   )
 

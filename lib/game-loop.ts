@@ -1,6 +1,77 @@
-import type { AIGameResponse, GameLoopContext, WarRoomScenario, Location, Unit } from "./types"
+import { useAIStore } from "./ai/store"
 import { SAMPLE_PAYLOADS } from "./mock-data/ai-payloads"
 import { resolveSemanticPosition } from "./geometry-utils"
+
+// Helper to generate a fake prompt for visualization
+function generateMockPrompt(tacticId: string, round: number) {
+  return `[SYSTEM]: SIMULATING PROMPT FOR ROUND ${round}
+[CONTEXT]: Player selected tactic ID "${tacticId}"
+[TASK]: Resolve combat interaction based on current unit positions.
+[NOTE]: This is a pre-generated mock prompt for demonstration.`
+}
+
+export async function resolveTurn(tacticId: string, currentRound: number, scenario?: WarRoomScenario, tactic?: any): Promise<any> {
+  const { isMockMode, setTurnTransaction, setLoading, provider, openaiKey, googleKey, selectedModel, turnSystemPrompt } = useAIStore.getState()
+  
+  setLoading(true)
+
+  if (isMockMode) {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // In mock mode, we use the tacticID to look up a predefined payload
+    // If scenario/tactic passed, we could theoretically build a dynamic mock response,
+    // but here we trust the hardcoded samples for safety.
+    const mockPayload = getInitialPayload(tacticId) || SAMPLE_PAYLOADS["bk_opt_panzer"]; // Fallback
+    const mockPrompt = generateMockPrompt(tacticId, currentRound)
+    
+    setTurnTransaction(mockPrompt, "MOCK MODE: No system prompt.", mockPayload)
+    setLoading(false)
+    return mockPayload
+  } else {
+    // REAL AI CALL (Phase 4)
+    try {
+      if (!scenario || !tactic) {
+        throw new Error("Scenario and Tactic are required for live AI resolution")
+      }
+
+      const response = await fetch('/api/resolve-turn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Pass keys if provided by user, otherwise server falls back to env
+          ...(openaiKey ? { 'x-openai-key': openaiKey } : {}),
+          ...(googleKey ? { 'x-google-key': googleKey } : {})
+        },
+        body: JSON.stringify({ 
+          scenario, 
+          tactic, 
+          round: currentRound,
+          config: {
+            provider,
+            model: selectedModel,
+            systemPrompt: turnSystemPrompt // Pass user overrides
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.message || "AI Request Failed")
+      }
+
+      const data = await response.json()
+      setTurnTransaction(data.prompt, data.systemPrompt || "System prompt not returned.", data.payload) // API returns all three
+      setLoading(false)
+      return data.payload
+    } catch (e) {
+      console.error(e)
+      setLoading(false)
+      alert("AI Error: " + (e as Error).message)
+      return null
+    }
+  }
+}
 
 export function createGameLoopContext(scenario: WarRoomScenario, round: number, selectedTactic: any): GameLoopContext {
   return {
@@ -16,6 +87,9 @@ export function createGameLoopContext(scenario: WarRoomScenario, round: number, 
 }
 
 export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGameResponse): WarRoomScenario {
+  // Capture region IDs for sanity check
+  const regionIds = new Set(scenario.mapRegions.map(r => r.id));
+
   // Process all units and apply state changes
   const updatedUnits = scenario.units.map((unit) => {
     const change = response.state_changes.find((c) => c.unit_id === unit.id)
@@ -30,6 +104,12 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
 
     // Case 3: Move with semantic update
     if (change.action === "MOVE" && change.semantic_update) {
+      // SANITIZATION: Check if target region actually exists
+      if (!regionIds.has(change.semantic_update.regionId)) {
+        console.warn(`AI Hallucination: Tried to move unit to non-existent region ${change.semantic_update.regionId}`);
+        return unit; // Ignore move, keep unit where it is
+      }
+      
       // Find target hex using the semantic placement
       if (!scenario.hexGrid) {
         console.warn("No hexGrid available for movement");
@@ -68,7 +148,7 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
   return {
     ...scenario,
     units: updatedUnits.filter(Boolean),
-    options: response.next_options && response.next_options.length > 0 
+    options: response.next_options !== undefined 
       ? response.next_options 
       : scenario.options,
   }
@@ -107,7 +187,12 @@ export function getInitialPayload(tacticId: string): AIGameResponse | null {
     return SAMPLE_PAYLOADS[mappedKey]
   }
 
-  // Final fallback to prevent crash
-  console.warn(`No payload found for tacticId: ${tacticId}`)
-  return SAMPLE_PAYLOADS["bk_opt_panzer"] || null
+  // Final fallback to prevent infinite loops: Return an "End of Mock Data" payload
+  console.warn(`No payload found for tacticId: ${tacticId}. Ending simulation.`)
+  return {
+    narrative_update: "End of simulation data. No further pre-scripted events available for this branch.",
+    state_changes: [],
+    visual_fx: [],
+    next_options: []
+  }
 }

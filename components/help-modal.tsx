@@ -29,46 +29,52 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <h2 className="text-2xl font-serif font-bold text-amber-900 mb-4">War Room Guide</h2>
 
               <div className="space-y-4 text-amber-900/80 text-sm font-serif">
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">What is the War Room?</h3>
-                  <p>
-                    The War Room is an interactive tactical command center where you issue strategic orders. Preview
-                    maneuvers visually before committing to your next battle round.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">Scenarios</h3>
-                  <p>
-                    Switch between different historical scenarios at the top. Each has unique units, maps, and tactical
-                    options.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">Main Map</h3>
-                  <p>
-                    The central parchment map shows all terrain regions, friendly units (blue), and enemy units (red).
-                    Unit status rings show cohesion: solid=fresh, dashed=engaged, broken=wavering, grey=routing.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-amber-900 mb-1">Tactical Options</h3>
-                  <p>
-                    Click a tactic card to see arrows on the map showing the planned strategy. Click "CONFIRM & ADVANCE
-                    ROUND" to execute the maneuver and advance to the next battle round.
-                  </p>
+                <div className="p-3 bg-amber-100/50 rounded-lg border border-amber-900/10">
+                  <h3 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
+                    <span className="text-xs uppercase tracking-wider bg-amber-900 text-amber-50 px-2 py-0.5 rounded">Game Modes</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                            <strong className="text-amber-900">AI (Live)</strong>
+                        </div>
+                        <p className="text-xs pl-4">
+                            Uses a Large Language Model (GPT-4o or Gemini) to dynamically adjudicate battle outcomes. 
+                            Results are unscripted and unique every time. <strong>Requires a valid API key</strong> in the Debug Console.
+                        </p>
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <strong className="text-amber-900">Mock Data (Simulation)</strong>
+                        </div>
+                        <p className="text-xs pl-4">
+                            Uses hardcoded, pre-scripted historical scenarios. No API key required. 
+                            Useful for demonstrating the UI without cost. Note that these scenarios have a fixed end point.
+                        </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
                   <h3 className="font-bold text-amber-900 mb-1">How to Command</h3>
                   <p>
-                    1) Use scenario switcher to choose a battle
+                    1) <strong>Select a Scenario</strong>: Choose a historical battle from the top bar.
                     <br />
-                    2) Click a tactic card (arrows appear on map)
+                    2) <strong>Review Map</strong>: Blue units are yours. Red are enemies. Rings indicate cohesion.
                     <br />
-                    3) Click "CONFIRM & ADVANCE ROUND" to execute and see results
+                    3) <strong>Issue Orders</strong>: Click a tactic card in the bottom panel. Arrows will visualize the maneuver.
+                    <br />
+                    4) <strong>Commit</strong>: Press "CONFIRM" to execute the turn. The AI (or Mock Engine) will resolve the outcome.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-amber-900 mb-1">Troubleshooting</h3>
+                  <p>
+                    If the "AI" mode shows an error badge, open the <strong>Console</strong> (terminal icon) and ensure your API Key is pasted correctly.
+                    If the game stops in Mock Data mode, you have reached the end of the script—switch to AI for endless play.
                   </p>
                 </div>
               </div>

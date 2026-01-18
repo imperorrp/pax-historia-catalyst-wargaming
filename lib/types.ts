@@ -153,6 +153,12 @@ export type VisualActionType =
   | "SEVER_SUPPLY"
   | "FEINT"
   | "AIRSTRIKE"
+  | "RAIN_ARROWS"
+  | "TRAMPLE"
+  | "NAVAL_RAM"
+  | "FIRE_SHIP"
+  | "HACK"
+  | "EMP_BLAST"
   | "RECON"
   | "COMBINED_ASSAULT"  // Composite: Artillery + Infantry + Cavalry
   | "REGION_BOMBARDMENT" // New: Visual effect on region

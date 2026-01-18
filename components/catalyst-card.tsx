@@ -3,6 +3,7 @@
 import type { CatalystOption } from "@/lib/types"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTargetingStore } from "@/lib/targeting-store"
+import { useAIStore } from "@/lib/ai/store"
 import { useState } from "react"
 
 interface CatalystCardProps {
@@ -12,6 +13,7 @@ interface CatalystCardProps {
 
 export function CatalystCard({ option, disabled = false }: CatalystCardProps) {
   const { state, selectedTactic, reset, selectTactic } = useTargetingStore()
+  const { isMockMode } = useAIStore()
   const isActive = state !== "idle" && selectedTactic?.id === option.id
   const [isHovered, setIsHovered] = useState(false)
 
@@ -34,7 +36,7 @@ export function CatalystCard({ option, disabled = false }: CatalystCardProps) {
       disabled={disabled}
       className={`
         relative group flex flex-col items-start justify-between p-2 rounded-lg
-        border-2 transition-all flex-shrink-0 cursor-pointer
+        border-2 transition-all flex-shrink-0 cursor-pointer overflow-hidden
         sm:w-52 w-44 min-h-[4.5rem]
         ${disabled 
             ? "opacity-50 cursor-not-allowed grayscale bg-gray-100 border-gray-300"
@@ -44,6 +46,10 @@ export function CatalystCard({ option, disabled = false }: CatalystCardProps) {
         }
       `}
     >
+      {isMockMode && (
+         <div className="absolute top-0 right-0 py-0.5 px-1.5 bg-amber-100 text-[8px] font-mono font-bold text-amber-800 border-l border-b border-amber-200 shadow-sm z-20 rounded-bl-md" title="This action is pre-scripted">MOCK</div>
+      )}
+
       <div className="text-left w-full h-full flex flex-col">
         <h3 className={`font-serif font-bold text-xs leading-tight transition-colors ${
           disabled ? "text-gray-600" : "text-amber-900"

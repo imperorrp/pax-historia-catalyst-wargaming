@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTargetingStore } from "@/lib/targeting-store"
 import type { Unit } from "@/lib/types"
@@ -11,15 +11,18 @@ interface UnitCounterProps {
 
 export function UnitCounter({ unit }: UnitCounterProps) {
   const [isHovered, setIsHovered] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const { state, selectedTactic, selectedUnit, currentScenario } = useTargetingStore()
   
   const isPlayer = unit.owner === "player"
   
-  // Calculate display position
+  // Calculate display position (only used after client mount to avoid SSR mismatch)
   let displayPos = { x: 50, y: 50 };
   let isNearBottom = false;
 
-  if (unit.hex && currentScenario.hexGrid) {
+  if (mounted && unit.hex && currentScenario.hexGrid) {
     const key = `${unit.hex.q},${unit.hex.r}`;
     const hexData = currentScenario.hexIndex?.[key] ?? currentScenario.hexGrid.find(h => h.q === unit.hex!.q && h.r === unit.hex!.r);
     if (hexData) {
@@ -111,17 +114,17 @@ export function UnitCounter({ unit }: UnitCounterProps) {
       animate={{ 
         scale: 1, 
         opacity: 1, 
-        left: displayPos.x, 
-        top: displayPos.y,
         x: "-50%",
         y: "-50%",
         zIndex: isHovered ? 50 : isSelected ? 40 : 30
       }}
+      style={{
+        ...(mounted ? { left: displayPos.x, top: displayPos.y } : {}),
+        pointerEvents: state === "tactic_selected" && !isValidTarget ? "none" : "auto",
+        zIndex: isHovered ? 50 : isSelected ? 40 : 30
+      }}
       transition={{ duration: 0.4, type: "spring" }}
       className="absolute"
-      style={{
-        pointerEvents: state === "tactic_selected" && !isValidTarget ? "none" : "auto",
-      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
