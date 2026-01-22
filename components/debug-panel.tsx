@@ -161,24 +161,24 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
         onMouseDown={handleDragStart}
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
-        <div className="flex items-center gap-3">
-          <GripVertical className="w-4 h-4 text-cyan-500/50" />
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
+            <GripVertical className="w-4 h-4 text-cyan-500/50" />
             <Terminal className="w-4 h-4 text-cyan-400" />
             <h3 className="font-bold text-sm tracking-widest text-cyan-100 uppercase">System Console</h3>
-            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold flex items-center gap-1 ml-3 ${isMockMode ? 'bg-amber-900/30 text-amber-500' : 'bg-emerald-900/30 text-emerald-500'}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold flex items-center gap-1 ${isMockMode ? 'bg-amber-900/30 text-amber-500' : 'bg-emerald-900/30 text-emerald-500'}`}>
               {isMockMode ? (
                 'Mock Mode'
               ) : (
                 <>
                   <span>{provider}</span>
                   <span className="opacity-50">/</span>
-                  <span className="truncate max-w-[100px]">{selectedModel}</span>
+                  <span className="truncate max-w-[80px]">{selectedModel}</span>
                 </>
               )}
             </span>
           </div>
-          <span className="text-[10px] bg-cyan-900/40 px-1.5 py-0.5 rounded text-cyan-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]" title={scenario.name}>
+          <span className="text-[10px] bg-cyan-900/40 px-1.5 py-0.5 rounded text-cyan-400 whitespace-normal break-words max-w-full" title={scenario.name}>
             {scenario.name.split(":")[0]}
           </span>
         </div>
