@@ -15,6 +15,9 @@ export const austerlitz: WarRoomScenario = {
     era: "Napoleonic",
     playerPolity: "France",
     enemyPolity: "Austria & Russia",
+    narrative_intro: `Central Europe, December 1805. The Napoleonic Wars have redrawn the map of Europe, and the fate of empires is decided not in palaces but on frozen fields. The Third Coalition—Austria, Russia, and Britain—seeks to halt the rise of France and restore the old order.
+
+On the plains near Austerlitz, three emperors gather their armies for a confrontation that will echo through history. The fog-shrouded Pratzen Heights dominate the landscape, a symbol of the high stakes and shifting fortunes of the age. Victory here will not only secure France’s dominance but will signal the dawn of a new era, where merit and ambition can topple thrones and reshape the world.`,
     mapDimensions: {
       width: 1000,
       height: 600,

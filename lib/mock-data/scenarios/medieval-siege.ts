@@ -15,6 +15,9 @@ export const medievalSiege: WarRoomScenario = {
     era: "Medieval",
     playerPolity: "The Crown",
     enemyPolity: "Rebel Lords",
+    narrative_intro: `Europe, High Middle Ages. Castles dot the landscape as symbols of feudal power and the struggle for legitimacy. The land is fractured by rival claims, dynastic feuds, and the ambitions of lords and kings.
+
+A besieged fortress is more than stone and mortar—it is the heart of a region’s authority, a storehouse of wealth, and a refuge for the desperate. The outcome of a siege can tip the balance of power, spark revolts, or bring peace to a war-torn countryside. As the engines of war grind on, famine and disease threaten both besieger and besieged, and the fate of the realm hangs on the breach or the bargain struck at dawn.`,
     mapDimensions: {
       width: 800,
       height: 600,

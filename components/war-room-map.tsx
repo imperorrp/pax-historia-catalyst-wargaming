@@ -234,7 +234,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const handleWheel = (e: React.WheelEvent) => {
     // Avoid calling preventDefault inside potentially passive listeners. We rely on CSS to prevent page scroll and only adjust zoom here.
     const scaleSensitivity = 0.001
-    const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * scaleSensitivity), 4)
+    const newScale = Math.min(Math.max(0.25, transform.scale - e.deltaY * scaleSensitivity), 4)
     setTransform(prev => ({ ...prev, scale: newScale }))
   }
 
@@ -288,7 +288,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       )
       const delta = dist - lastPinchDist
       const scaleSensitivity = 0.01
-      const newScale = Math.min(Math.max(0.5, transform.scale + delta * scaleSensitivity), 4)
+      const newScale = Math.min(Math.max(0.25, transform.scale + delta * scaleSensitivity), 4)
       setTransform(prev => ({ ...prev, scale: newScale }))
       setLastPinchDist(dist)
     }
@@ -1067,7 +1067,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
           >+</button>
           <div className="text-xs text-center text-stone-400 font-mono">{Math.round(transform.scale * 100)}%</div>
           <button 
-            onClick={() => setTransform(p => ({...p, scale: Math.max(0.5, p.scale - 0.2)}))}
+            onClick={() => setTransform(p => ({...p, scale: Math.max(0.25, p.scale - 0.2)}))}
             className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold"
           >-</button>
           <button 

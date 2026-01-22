@@ -1,25 +1,33 @@
 import { create } from 'zustand';
 
+// Define the shape of a single AI interaction
+export interface AITransaction {
+  id: string;
+  timestamp: number;
+  type: 'SCENARIO_GEN' | 'TURN_RES' | 'KEY_VALIDATION';
+  status: 'pending' | 'success' | 'error';
+  model: string;
+  provider: string;
+  
+  // Data
+  systemPrompt?: string;
+  userPrompt?: string;
+  rawResponse?: any;
+  error?: string;
+  latency?: number; // ms
+  
+  // New Telemetry
+  rawOutput?: string; 
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
 interface AIState {
   isMockMode: boolean;
   isDebugOpen: boolean;
-  
-  // Last Execution State - Scenarios
-  lastScenarioPrompt: string;
-  lastScenarioSystemPrompt: string;
-  lastScenarioResponse: any;
-
-  // Last Execution State - Turns
-  lastTurnPrompt: string;
-  lastTurnSystemPrompt: string;
-  lastTurnResponse: any;
-
-  // General legacy getters (can be deprecated or aliased to Turn)
-  lastPrompt: string;
-  lastSystemPrompt: string;
-  lastResponse: any;
-
-  isLoading: boolean;
   
   // Configuration
   provider: 'openai' | 'google';
@@ -27,49 +35,43 @@ interface AIState {
   googleKey: string;
   selectedModel: string;
   
-  // User Configurable Prompts
+  // Prompt overrides
   scenarioSystemPrompt: string;
   turnSystemPrompt: string;
 
-  // Validation
-  isValidating: boolean;
+  // Prompt tracking (for Debug Panel)
+  lastScenarioPrompt: string | null;
+  lastScenarioSystemPrompt: string | null;
+  lastTurnPrompt: string | null;
+  lastTurnSystemPrompt: string | null;
+
+  // Telemetry
+  history: AITransaction[];
+  isLoading: boolean;
   isKeyValid: boolean;
   validationMessage: string;
 
   // Actions
   toggleMockMode: () => void;
   toggleDebug: () => void;
-  setScenarioTransaction: (prompt: string, systemPrompt: string, response: any) => void;
-  setTurnTransaction: (prompt: string, systemPrompt: string, response: any) => void;
-  setTransaction: (prompt: string, systemPrompt: string, response: any) => void; // Legacy alias to Turn
-  setLoading: (loading: boolean) => void;
-  setConfig: (config: Partial<AIState>) => void;
-  validateKey: () => Promise<void>;
   
-  // Helpers
+  // Logging actions
+  startTransaction: (type: AITransaction['type'], userPrompt?: string) => string; // Returns ID
+  completeTransaction: (id: string, response: any) => void;
+  failTransaction: (id: string, error: string, rawResponse?: any, usage?: any) => void;
+  
+  setConfig: (config: Partial<AIState>) => void;
+  setLastPrompts: (type: 'SCENARIO' | 'TURN', userPrompt: string, systemPrompt: string) => void;
+  setMockPrompt: (type: 'SCENARIO' | 'TURN') => void;
+  validateKey: () => Promise<void>;
   hasValidKey: () => boolean;
+  clearHistory: () => void;
 }
 
 export const useAIStore = create<AIState>((set, get) => ({
-  isMockMode: true,
+  isMockMode: true, // Default to mock for safety
   isDebugOpen: false,
   
-  lastScenarioPrompt: "Waiting for scenario request...",
-  lastScenarioSystemPrompt: "No system instructions recorded.",
-  lastScenarioResponse: {},
-
-  lastTurnPrompt: "Waiting for turn resolution...",
-  lastTurnSystemPrompt: "No system instructions recorded.",
-  lastTurnResponse: {},
-
-  // Legacy mappings to Turn (most common action)
-  get lastPrompt() { return get().lastTurnPrompt },
-  get lastSystemPrompt() { return get().lastTurnSystemPrompt },
-  get lastResponse() { return get().lastTurnResponse },
-
-  isLoading: false,
-
-  // Defaults
   provider: 'openai',
   openaiKey: '',
   googleKey: '',
@@ -77,69 +79,178 @@ export const useAIStore = create<AIState>((set, get) => ({
   
   scenarioSystemPrompt: `You are the Game Master for "Pax Historia", a tactical war game.
 Your job is to generate a balanced, historically plausible battlefield scenario.
-Ensure the layout makes tactical sense (e.g., defenders on hills, rivers blocking paths).`,
-
+Ensure the layout makes tactical sense (e.g., defenders on hills, rivers blocking paths).`, 
   turnSystemPrompt: `You are a tactical wargame referee engine. Your goal is to resolve turn-based combat with dramatic flair and tactical realism. 
 Maintain a consistent JSON output format as specified in the schema. 
-Be creative with "visual_actions" to describe the flow of battle.`,
+Be creative with "visual_actions" to describe the flow of battle.`, 
 
-  isValidating: false,
+  lastScenarioPrompt: null,
+  lastScenarioSystemPrompt: null,
+  lastTurnPrompt: null,
+  lastTurnSystemPrompt: null,
+
+  history: [],
+  isLoading: false,
   isKeyValid: false,
   validationMessage: '',
 
   toggleMockMode: () => set((state) => ({ isMockMode: !state.isMockMode })),
   toggleDebug: () => set((state) => ({ isDebugOpen: !state.isDebugOpen })),
-  
-  setScenarioTransaction: (prompt, systemPrompt, response) => set({ 
-      lastScenarioPrompt: prompt, 
-      lastScenarioSystemPrompt: systemPrompt, 
-      lastScenarioResponse: response 
-  }),
 
-  setTurnTransaction: (prompt, systemPrompt, response) => set({ 
-      lastTurnPrompt: prompt, 
-      lastTurnSystemPrompt: systemPrompt, 
-      lastTurnResponse: response 
-  }),
-
-  setTransaction: (prompt, systemPrompt, response) => set({ 
-      lastTurnPrompt: prompt, 
-      lastTurnSystemPrompt: systemPrompt, 
-      lastTurnResponse: response 
-  }),
-  
-  setLoading: (loading) => set({ isLoading: loading }),
-
-  setConfig: (config) => {
-      set((state) => ({ ...state, ...config, isKeyValid: false })); 
+  setLastPrompts: (type, userPrompt, systemPrompt) => {
+    if (type === 'SCENARIO') {
+      set({ lastScenarioPrompt: userPrompt, lastScenarioSystemPrompt: systemPrompt });
+    } else {
+      set({ lastTurnPrompt: userPrompt, lastTurnSystemPrompt: systemPrompt });
+    }
   },
 
-  validateKey: async (skipVerification = false, selectedModel?: string) => {
-    const { provider, openaiKey, googleKey } = get();
+  setMockPrompt: (type) => {
+    const mockMsg = "/// MOCK MODE ACTIVE ///\nNo LLM API call was made.\nData was retrieved from pre-scripted local files.";
+    if (type === 'SCENARIO') {
+      set({ lastScenarioPrompt: mockMsg, lastScenarioSystemPrompt: mockMsg });
+    } else {
+      set({ lastTurnPrompt: mockMsg, lastTurnSystemPrompt: mockMsg });
+    }
+  },
+
+  setConfig: (config) => set((state) => {
+    const updates: any = { ...config, isKeyValid: false };
+
+    // Auto-switch model if provider changes
+    if (config.provider && config.provider !== state.provider) {
+      if (config.provider === 'google') {
+        updates.selectedModel = 'gemini-1.5-flash';
+      } else {
+        updates.selectedModel = 'gpt-4o';
+      }
+    }
+
+    return { ...state, ...updates };
+  }),
+
+  startTransaction: (type, userPrompt) => {
+    const id = crypto.randomUUID();
+    const { provider, selectedModel, scenarioSystemPrompt, turnSystemPrompt } = get();
+    
+    // Determine which valid system prompt to use
+    let relevantSystemPrompt = '';
+    if (type === 'SCENARIO_GEN') relevantSystemPrompt = scenarioSystemPrompt;
+    if (type === 'TURN_RES') relevantSystemPrompt = turnSystemPrompt;
+
+    const newEntry: AITransaction = {
+      id,
+      timestamp: Date.now(),
+      type,
+      status: 'pending',
+      model: selectedModel,
+      provider,
+      systemPrompt: relevantSystemPrompt,
+      userPrompt: userPrompt,
+    };
+
+    set(state => ({ 
+      history: [newEntry, ...state.history],
+      isLoading: true 
+    }));
+    return id;
+  },
+
+  completeTransaction: (id, responseWrapper: any) => {
+    set(state => ({
+      isLoading: false,
+      history: state.history.map(entry => {
+        if (entry.id !== id) return entry;
+        
+        // Handle both old style (direct payload) and new style (wrapped)
+        const isWrapped = responseWrapper && (responseWrapper.data || responseWrapper.raw || responseWrapper.usage);
+        
+        // Normalize usage shape to consistent camelCase token fields
+        const normalizeUsage = (u: any) => {
+          if (!u) return undefined;
+          const promptTokens = u.promptTokens ?? u.prompt_tokens ?? u.input_tokens ?? u.prompt ?? undefined;
+          const completionTokens = u.completionTokens ?? u.completion_tokens ?? u.output_tokens ?? u.completion ?? undefined;
+          const totalTokens = u.totalTokens ?? u.total_tokens ?? u.total ?? (typeof promptTokens === 'number' && typeof completionTokens === 'number' ? promptTokens + completionTokens : u.total ?? undefined);
+          return { promptTokens, completionTokens, totalTokens };
+        };
+
+        return {
+          ...entry,
+          status: 'success',
+          rawResponse: isWrapped ? responseWrapper.data : responseWrapper,
+          rawOutput: isWrapped ? responseWrapper.raw : undefined,
+          tokenUsage: isWrapped ? normalizeUsage(responseWrapper.usage) : undefined,
+          latency: Date.now() - entry.timestamp
+        };
+      })
+    }));
+  },
+
+  failTransaction: (id, error, rawResponse, usage) => {
+    const normalizeUsage = (u: any) => {
+      if (!u) return undefined;
+      const promptTokens = u.promptTokens ?? u.prompt_tokens ?? u.input_tokens ?? u.prompt ?? undefined;
+      const completionTokens = u.completionTokens ?? u.completion_tokens ?? u.output_tokens ?? u.completion ?? undefined;
+      const totalTokens = u.totalTokens ?? u.total_tokens ?? u.total ?? (typeof promptTokens === 'number' && typeof completionTokens === 'number' ? promptTokens + completionTokens : u.total ?? undefined);
+      return { promptTokens, completionTokens, totalTokens };
+    };
+
+    set(state => ({
+      isLoading: false,
+      history: state.history.map(entry => {
+        if (entry.id !== id) return entry;
+        return {
+          ...entry,
+          status: 'error',
+          error: error,
+          rawResponse: rawResponse,
+          tokenUsage: normalizeUsage(usage),
+          latency: Date.now() - entry.timestamp
+        };
+      })
+    }));
+  },
+
+  clearHistory: () => set({ history: [] }),
+
+  validateKey: async (skipVerification?: boolean) => {
+    const { provider, openaiKey, googleKey, startTransaction, completeTransaction, failTransaction } = get();
+    const txId = startTransaction('KEY_VALIDATION');
     const apiKey = provider === 'openai' ? openaiKey : googleKey;
     
     if (!apiKey || apiKey.length < 5) {
         set({ isKeyValid: false, validationMessage: 'Key too short' });
+        failTransaction(txId, 'Key too short');
         return;
     }
 
-    set({ isValidating: true, validationMessage: '' });
-    
+    // If skip verification is requested, mark as valid immediately
+    if (skipVerification) {
+        set({ isKeyValid: true, validationMessage: 'Verification skipped - key format appears valid' });
+        completeTransaction(txId, { isValid: true, message: 'Verification skipped' });
+        return;
+    }
+
     try {
         const res = await fetch('/api/verify-key', {
           method: 'POST',
-          body: JSON.stringify({ provider, apiKey, skipVerification, selectedModel }),
+          body: JSON.stringify({ provider, apiKey }),
           headers: { 'Content-Type': 'application/json' }
         });
-        
         const data = await res.json();
-        set({ isValidating: false, isKeyValid: data.isValid, validationMessage: data.message });
-    } catch (e) {
-        set({ isValidating: false, isKeyValid: false, validationMessage: 'Network error checking key' });
+        
+        set({ isKeyValid: data.isValid, validationMessage: data.message });
+        
+        if (data.isValid) {
+            completeTransaction(txId, data);
+        } else {
+            failTransaction(txId, data.message);
+        }
+    } catch (e: any) {
+        set({ isKeyValid: false, validationMessage: 'Network error checking key' });
+        failTransaction(txId, e.message || 'Network error');
     }
   },
 
-  hasValidKey: () => {
-    return get().isKeyValid; 
-  },
+  hasValidKey: () => get().isKeyValid
 }));

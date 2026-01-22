@@ -34,7 +34,7 @@ export function WarRoomHeader({
   onOpenScenario,
   isAnimating
 }: WarRoomHeaderProps) {
-  const { isMockMode, toggleMockMode, isLoading, provider, hasValidKey } = useAIStore()
+  const { isMockMode, toggleMockMode, isLoading, provider, hasValidKey, selectedModel } = useAIStore()
   
   return (
     <header className="border-b border-amber-900/10 bg-amber-50/60 backdrop-blur-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0 relative">
@@ -56,11 +56,18 @@ export function WarRoomHeader({
                 <div className="flex items-center gap-2 bg-amber-900/5 px-2 py-1 rounded-full border border-amber-900/10 relative group">
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-bold font-serif text-amber-900 leading-none">
-                      {isMockMode ? "MOCK DATA" : "AI"}
+                      {isMockMode ? "MOCK DATA" : "AI MODE"}
                     </span>
-                    <span className="text-[8px] text-amber-900/60 leading-none">
-                      {provider.toUpperCase()}
-                    </span>
+                    <div className="flex flex-col items-end leading-none mt-0.5">
+                      <span className="text-[8px] font-bold text-amber-800/80 uppercase tracking-wide">
+                        {provider}
+                      </span>
+                      {!isMockMode && (
+                        <span className="text-[7px] text-amber-700/60 font-mono max-w-[80px] truncate">
+                          {selectedModel}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button 
                     onClick={() => toggleMockMode()}

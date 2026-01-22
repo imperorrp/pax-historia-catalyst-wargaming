@@ -12,6 +12,7 @@ import { UnitsPanel } from "./units-panel"
 import { HelpModal } from "./help-modal"
 import { CreateScenarioModal } from "./create-scenario-modal"
 import { useTargetingStore } from "@/lib/targeting-store"
+import { SCENARIOS } from "@/lib/mock-data/scenarios"
 import { useAIStore } from "@/lib/ai/store"
 import { resolveTurn, reconcileStateChanges } from "@/lib/game-loop"
 import { Check, Maximize2, Minimize2, HelpCircle, ChevronUp, ChevronDown, Radio, ChevronLeft, ChevronRight, Rewind, Target, Bug, AlertCircle } from "lucide-react"
@@ -46,6 +47,10 @@ export function WarRoomLayout() {
   const unitsSidebarRef = useRef<HTMLDivElement>(null)
   const [isTacticalExpanded, setIsTacticalExpanded] = useState(true)
 
+  // Prevent hydration mismatch for procedurally generated maps: only render after client mount
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const isHistoricalView = historyIndex < history.length - 1
 
   // Auto-open units sidebar and scroll to selected unit
@@ -72,7 +77,18 @@ export function WarRoomLayout() {
 
   // Reset logs when scenario changes
   useEffect(() => {
-    setLogs([{text: `Values initialized for: ${currentScenario.name}`, round: 0, source: 'system'}])
+    const isMockScenario = Object.values(SCENARIOS).some(s => s.id === currentScenario.id)
+    const meta = `Scenario: ${currentScenario.name} | Era: ${currentScenario.era} | Player: ${currentScenario.playerPolity} | Enemy: ${currentScenario.enemyPolity} | Map: ${currentScenario.mapDimensions?.width ?? '?'}x${currentScenario.mapDimensions?.height ?? '?'}`
+    setLogs([
+      { text: `Command Center initialized for: ${currentScenario.name}`, round: 0, source: 'system' },
+      { text: meta, round: 0, source: 'system' },
+      // Inject the Narrative Intro if present. Use 'mock' source for built-in scenarios.
+      ...(currentScenario.options && (currentScenario as any).narrative_intro ? [{
+          text: `Narrative Intro: ${(currentScenario as any).narrative_intro}`,
+          round: 0,
+          source: isMockScenario ? 'mock' : 'ai'
+      }] : [])
+    ])
   }, [currentScenario.id])
 
   const handleCommit = async () => {
@@ -108,10 +124,14 @@ export function WarRoomLayout() {
     console.log("[v0] AI Response received:", response)
     setGameResponse(response)
 
+    const narrative = response.narrative_outcome ?? response.narrative_update ?? response.narrative ?? '(no narrative)';
+
     setLogs((prev) => [
       ...prev,
-      {text: `>>> ROUND ${currentRound} - ${selectedTactic.title} executed`, round: currentRound, source: 'system'},
-      {text: `>>> ${response.narrative_update}`, round: currentRound, source: aiState.isMockMode ? 'mock' : 'ai'},
+      { text: `>>> ROUND ${currentRound} - ${selectedTactic.title} executed`, round: currentRound, source: 'system' },
+      // Include the tactical option's full description for clarity
+      { text: `>>> ${selectedTactic.description}`, round: currentRound, source: 'system' },
+      { text: `>>> ${narrative}`, round: currentRound, source: aiState.isMockMode ? 'mock' : 'ai' },
     ])
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -123,7 +143,7 @@ export function WarRoomLayout() {
       currentScenario: updatedScenario,
     })
 
-    saveToHistory(updatedScenario, response.narrative_update, selectedTactic)
+    saveToHistory(updatedScenario, narrative, selectedTactic)
     incrementRound()
     console.log("[v0] Round incremented to:", currentRound + 1)
 
@@ -134,6 +154,8 @@ export function WarRoomLayout() {
       console.log("[v0] Game state reset for next round")
     }, 500)
   }
+
+  if (!mounted) return <div className="h-screen w-screen bg-amber-50" />
 
   if (isMapMaximized) {
     return (

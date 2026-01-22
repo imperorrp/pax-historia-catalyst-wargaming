@@ -181,33 +181,41 @@ export function UnitCounter({ unit }: UnitCounterProps) {
             initial={{ opacity: 0, y: isNearBottom ? 5 : -5, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className={`absolute left-1/2 -translate-x-1/2 z-[60] min-w-[180px] pointer-events-none 
+            className={`absolute left-1/2 -translate-x-1/2 z-[60] min-w-[200px] max-w-[240px] pointer-events-none 
               ${isNearBottom ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'}
             `}
           >
-             <div className="bg-slate-800 text-slate-100 rounded-lg shadow-xl border border-slate-600 p-0 text-xs overflow-hidden">
-                <div className={`px-3 py-2 font-bold text-sm border-b border-white/10 ${isPlayer ? 'bg-blue-900/40 text-blue-100' : 'bg-red-900/40 text-red-100'}`}>
-                   {unit.name}
-                </div>
-                <div className="p-3 space-y-1.5">
-                   <div className="flex justify-between">
-                      <span className="text-slate-400">Type</span>
-                      <span className="capitalize font-medium">{unit.type}</span>
-                   </div>
-                   <div className="flex justify-between">
-                      <span className="text-slate-400">Status</span>
-                      <span className={`uppercase font-bold text-[10px] px-1.5 py-0.5 rounded ${
-                         unit.status === 'fresh' ? 'bg-green-500/20 text-green-400' : 
-                         unit.status === 'engaged' ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'
-                      }`}>
-                         {unit.status}
-                      </span>
-                   </div>
-                   <div className="pt-1 border-t border-white/5">
-                      <span className="text-slate-500 italic block text-[10px]">{unit.tags.join(" • ")}</span>
-                   </div>
-                </div>
+             <div className="bg-slate-800 text-slate-100 rounded-lg shadow-xl border border-slate-600 p-0 text-xs overflow-hidden flex flex-col divide-y divide-white/10">
+                
+                {/* Header if multiple */}
+                {stackCount > 1 && (
+                  <div className="px-3 py-1.5 bg-slate-900/50 text-amber-400 font-bold text-[10px] uppercase tracking-wider text-center">
+                    {stackCount} Units stacked
+                  </div>
+                )}
+
+                {stackedUnits.map((u, idx) => (
+                  <div key={u.id} className={`${stackCount > 1 ? 'bg-slate-800/80 hover:bg-slate-700/50' : ''}`}>
+                    <div className={`px-3 py-2 font-bold text-sm flex items-center gap-2 ${u.owner === 'player' ? 'bg-blue-900/40 text-blue-100' : 'bg-red-900/40 text-red-100'}`}>
+                       <div className={`w-2 h-2 rounded-full ${u.status === 'engaged' ? 'bg-orange-500' : u.status === 'fresh' ? 'bg-green-500' : 'bg-red-500'}`} />
+                       <span className="truncate">{u.name}</span>
+                    </div>
+                    
+                    <div className="p-3 space-y-1.5">
+                       <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Type</span>
+                          <span className="capitalize font-medium">{u.type}</span>
+                       </div>
+                       {u.tags && u.tags.length > 0 && (
+                        <div className="pt-1 mt-1 border-t border-white/5">
+                            <span className="text-slate-500 italic block text-[10px]">{u.tags.join(" • ")}</span>
+                        </div>
+                       )}
+                    </div>
+                  </div>
+                ))}
              </div>
+
              {/* Arrow */}
              <div className={`
                 absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-800 border-r border-b border-slate-600 transform rotate-45

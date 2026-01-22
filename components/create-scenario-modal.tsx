@@ -16,7 +16,7 @@ export function CreateScenarioModal({
   const [prompt, setPrompt] = useState("")
   // Removed internal isOpen state since it's now controlled
   const setScenario = useTargetingStore(state => state.setScenario)
-  const { isMockMode, provider, openaiKey, googleKey, selectedModel, scenarioSystemPrompt, toggleMockMode, setScenarioTransaction } = useAIStore()
+  const { isMockMode, provider, openaiKey, googleKey, selectedModel, scenarioSystemPrompt, toggleMockMode, startTransaction, completeTransaction, failTransaction } = useAIStore()
   const [loading, setLoading] = useState(false)
 
   const handleCreate = async () => {
@@ -33,52 +33,95 @@ export function CreateScenarioModal({
         }
     }
 
+    // 1. Prepare Telemetry ID
+    const txId = startTransaction('SCENARIO_GEN', prompt);
+
     try {
       const activeKey = provider === 'google' ? googleKey : openaiKey;
 
+      // Validate provider/model compatibility on the client to avoid roundtrip errors
+      let providerToSend = provider;
+      let apiKeyToSend = activeKey;
+
+      if (provider === 'google' && selectedModel && selectedModel.toLowerCase().includes('gpt')) {
+        const switchOk = confirm(`You currently selected Google as the provider but the model "${selectedModel}" looks like an OpenAI model. Press OK to switch provider to 'openai' for this request, or Cancel to change your selected model in Settings.`)
+        if (switchOk) {
+          providerToSend = 'openai';
+          apiKeyToSend = openaiKey;
+        } else {
+          setLoading(false);
+          failTransaction(txId, "Aborted by user (Model Mismatch)");
+          alert('Scenario generation aborted. Select a compatible Google model (e.g., gemini-1.5-pro) or switch provider to OpenAI.');
+          return;
+        }
+      }
+
       const res = await fetch("/api/generate-scenario", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           prompt,
-          provider,
-          apiKey: activeKey,
+          provider: providerToSend,
+          apiKey: apiKeyToSend,
           model: selectedModel,
           systemPrompt: scenarioSystemPrompt
         }),
       })
       
-      if (!res.ok) throw new Error("Generation failed")
+      const text = await res.text();
+      if (!res.ok) {
+        // Try to parse a structured error, otherwise include raw text
+        let errMsg = text;
+        try { errMsg = JSON.parse(text).error || text } catch { /* ignore */ }
+        throw new Error(`Generation failed (${provider}): ${errMsg}`)
+      }
       
-      const data = await res.json()
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+         // This is often where "text before json" fails if strict mode didn't catch it
+         throw new Error("Received invalid JSON from AI. Check Telemetry for raw output.");
+      }
       
-      // Handle the debug info if present (since we changed the return type to Response.json)
-      const scenarioData = data._debug ? { ...data, _debug: undefined } : data
+      // Optional: expose raw model output for debugging
+      if (data?.raw) {
+        console.debug("AI Raw Output:", data.raw);
+      }
       
-      if (data._debug) {
-         setScenarioTransaction(
-            data._debug.userPrompt, 
-            data._debug.systemPrompt, 
-            scenarioData
-         );
-      } else {
-         // Fallback for mock or old API
-         setScenarioTransaction(
-            `Generate scenario: ${prompt}`, 
-            "System prompt unavailable (Mock Mode?)", 
-            scenarioData
+      // CRITICAL FIX: Save the prompts for the Debug Panel
+      if (data.systemPrompt) {
+         useAIStore.getState().setLastPrompts(
+            'SCENARIO', 
+            prompt,
+            data.systemPrompt
          );
       }
 
+      // 4. Log Success
+      completeTransaction(txId, data);
+      
+      // Extract the actual scenario payload (API now wraps it in 'data' field)
+      const scenarioPayload = data.data || data;
+      
+      // Handle the debug info if present
+      const scenarioData = scenarioPayload._debug ? { ...scenarioPayload, _debug: undefined } : scenarioPayload
+      
       const scenario = scenarioData
       if (scenario && scenario.id) {
           // Hydrate logic happens in store or we trust the API result complies with Schema
           setScenario(scenario) 
           onClose()
           setPrompt("")
+      } else {
+          throw new Error("No scenario ID returned");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
-      alert("Failed to generate scenario. Ensure you have a valid OPENAI_API_KEY in .env")
+      // 5. Log Failure
+      failTransaction(txId, e.message || String(e));
+      // Show clearer provider-aware error message with pointer to Telemetry
+      alert(`Failed to generate scenario.\n\nError: ${e?.message || String(e)}\n\nPlease check the "System Console" > "Telemetry" tab to see the raw response from the AI.`)
     } finally {
       setLoading(false)
     }
@@ -111,6 +154,19 @@ export function CreateScenarioModal({
                   <div>
                     <h2 className="text-xl font-serif font-bold text-amber-900">Commission New Scenario</h2>
                     <p className="text-xs text-amber-700/70">Create a custom battlefield with AI</p>
+
+                    {/* Provider / Model Badge */}
+                    <div className="mt-2 flex items-center gap-3">
+                      <div className="text-[10px] font-bold font-serif text-amber-900 leading-none">
+                        {isMockMode ? "MOCK DATA" : "AI MODE"}
+                      </div>
+                      <div className="flex flex-col items-start leading-none">
+                        <span className="text-[8px] font-bold text-amber-800/80 uppercase tracking-wide">{provider}</span>
+                        {!isMockMode && (
+                          <span className="text-[7px] text-amber-700/60 font-mono max-w-[220px] truncate">{selectedModel}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                </div>
                <button 

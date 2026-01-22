@@ -19,6 +19,7 @@ interface TargetingStore {
   selectedUnit: Unit | null
   currentRound: number
   currentScenario: WarRoomScenario
+  availableScenarios: WarRoomScenario[]
   visibleLayers: {
     grid: boolean
     units: boolean
@@ -57,6 +58,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   selectedUnit: null,
   currentRound: 1,
   currentScenario: initialScenario,
+  availableScenarios: Object.values(SCENARIOS), // Initialize with Mock Data
   visibleLayers: {
     grid: true,
     units: true,
@@ -120,13 +122,23 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
     
     // Hydrate scenario if it doesn't have hexGrid yet
     const hydratedScenario = scenario.hexGrid ? scenario : hydrateScenarioLayout(scenario);
-    set({
-      currentScenario: hydratedScenario,
-      currentRound: 1,
-      selectedTactic: null,
-      state: "idle",
-      history: [{ round: 1, scenario: hydratedScenario, narrative: "Initial deployment", tacticUsed: null }],
-      historyIndex: 0,
+    
+    set((state) => {
+      // Check if scenario already exists in list
+      const exists = state.availableScenarios.find(s => s.id === hydratedScenario.id);
+      
+      return {
+        currentScenario: hydratedScenario,
+        currentRound: 1,
+        selectedTactic: null,
+        state: "idle",
+        history: [{ round: 1, scenario: hydratedScenario, narrative: "Initial deployment", tacticUsed: null }],
+        historyIndex: 0,
+        // Append new scenario to the list if it's new
+        availableScenarios: exists 
+          ? state.availableScenarios 
+          : [...state.availableScenarios, hydratedScenario] 
+      };
     });
   },
 
@@ -140,17 +152,27 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   setAnimating: (animating) => set({ isAnimating: animating }),
 
   saveToHistory: (scenario, narrative, tactic) => {
-    console.debug('[history] saveToHistory called with tactic', tactic?.id ?? null)
     const { history, historyIndex } = get()
-    const newHistory = history.slice(0, historyIndex + 1)
-    newHistory.push({
-      round: newHistory.length + 1,
-      scenario,
-      narrative,
-      tacticUsed: tactic,
+    
+    // 1. Finalize the CURRENT entry (the one just completed)
+    const updatedHistory = [...history]
+    if (updatedHistory[historyIndex]) {
+       updatedHistory[historyIndex] = {
+         ...updatedHistory[historyIndex],
+         narrative: narrative, // Store the result narrative here
+         tacticUsed: tactic // Ensure the tactic is frozen here
+       }
+    }
+
+    // 2. Create the NEW entry for the next round (starts with no tactic selected)
+    updatedHistory.push({
+      round: updatedHistory.length + 1,
+      scenario, // The new state
+      narrative: "Awaiting orders...", // Placeholder
+      tacticUsed: null, // <--- KEY FIX: Start null
     })
-    console.debug('[history] saveToHistory: saved tactic', tactic?.id ?? null, 'at round', newHistory.length)
-    set({ history: newHistory, historyIndex: newHistory.length - 1 })
+
+    set({ history: updatedHistory, historyIndex: updatedHistory.length - 1 })
   },
 
   goToPreviousRound: () => {

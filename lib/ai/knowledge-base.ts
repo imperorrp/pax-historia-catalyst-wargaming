@@ -45,13 +45,13 @@ AVAILABLE VISUAL ACTIONS (Use these for 'semanticAction'):
 `;
 
 export const TERRAIN_GUIDE = `
-VALID TERRAIN TYPES:
-- "plains": Default movement.
-- "forest": Defensive bonus, blocks cavalry. Visual: Green cross-hatch.
-- "mountain": Impassable/Hard. Visual: Grey peaks.
-- "river": Blue wavy texture. Needs bridges to cross.
-- "mud": Brown dotted texture. Slows movement (good for historic battles).
-- "urban": Grey solid blocks. Good for defensive "FORTIFY".
+VALID TERRAIN TYPES & RULES:
+- "plains": Open ground. Advantage to Cavalry/Armor.
+- "forest": Dense cover. Blocks line of sight. Disadvantage to Cavalry. Advantage to Infantry ambush.
+- "mountain": Impassable to Armor/Cavalry. High defense bonus.
+- "river": Crossing imposes "Vulnerable" status unless a bridge is used.
+- "mud": High movement penalty. Chance of vehicles getting "Stuck".
+- "urban": Close quarters. High defense. Deadly to Armor without Infantry support.
 `;
 
 export const LAYOUT_GENERATION_RULES = `
@@ -68,6 +68,7 @@ RULES FOR GENERATING MAP REGIONS (The 'Painter's Algorithm'):
 // ONE-SHOT EXAMPLE: SCENARIO GENERATION
 // This teaches the AI how to use the "Painter's Algorithm" layout
 export const SCENARIO_EXAMPLE_JSON = JSON.stringify({
+  thought_chain: "This is a classic Medieval battle. The Saxons have defensive position on Senlac Hill with shield wall infantry. The Normans are in the valley with cavalry. I'll create a marsh to the west to limit flanking options and force engagement through the center.",
   name: "Battle of Hastings (1066)",
   era: "Medieval",
   playerPolity: "Normans",
@@ -80,7 +81,7 @@ export const SCENARIO_EXAMPLE_JSON = JSON.stringify({
       type: "blob",
       terrain: "mountain",
       influence: 150,
-      centerCoordinates: { x: 500, y: 200 }, // Top Center
+      points: [[500, 200]], // Top Center
       description: "Steep slopes defending the Saxon center."
     },
     {
@@ -89,7 +90,7 @@ export const SCENARIO_EXAMPLE_JSON = JSON.stringify({
       type: "blob",
       terrain: "mud",
       influence: 80,
-      centerCoordinates: { x: 150, y: 400 }, // Left flank obstacle
+      points: [[150, 400]], // Left flank obstacle
       description: "Boggy ground unsuitable for cavalry."
     },
     {
@@ -98,7 +99,7 @@ export const SCENARIO_EXAMPLE_JSON = JSON.stringify({
       type: "path", // A broad path for the attackers
       terrain: "plains",
       influence: 200,
-      pathPoints: [[100, 700], [500, 600], [900, 700]], // Bottom area
+      points: [[100, 700], [500, 600], [900, 700]], // Bottom area
       description: "Deployment zone for the Normans."
     }
   ],
@@ -125,8 +126,22 @@ export const SCENARIO_EXAMPLE_JSON = JSON.stringify({
       id: "opt_feint",
       title: "Feigned Retreat",
       description: "Pretend to flee to draw the Saxons off the hill.",
-      semanticAction: "FEINT",
-      targetLogic: "center_mass"
+      // SHOW THE AI HOW TO STACK ACTIONS
+      compositeActions: [
+        { 
+           semanticAction: "RETREAT", 
+           targetLogic: "center_mass", 
+           requiredUnitTypes: ["cavalry"], 
+           description: "Lure enemy out" 
+        },
+        { 
+           semanticAction: "ENCIRCLE", 
+           targetLogic: "flank_right", 
+           requiredUnitTypes: ["infantry"], 
+           description: "Collapse on their flank" 
+        }
+      ],
+      visualEffects: ["dust", "smoke"]
     }
   ]
 });
@@ -134,31 +149,53 @@ export const SCENARIO_EXAMPLE_JSON = JSON.stringify({
 // ONE-SHOT EXAMPLE: TURN RESOLUTION
 // This teaches the AI how to move units and apply FX
 export const TURN_EXAMPLE_JSON = JSON.stringify({
-  narrative_update: "The feigned retreat works! undisciplined Saxon Fyrd break ranks to chase your cavalry. As they hit the valley floor, your knights wheel around. The shield wall is fractured.",
+  thought_chain: "The breach is open. I need to direct the player's next move to exploit this specific location, rather than a general attack.",
+  narrative_outcome: "The wall collapses! Dust chokes the defenders as your infantry surge forward.",
   state_changes: [
     {
       unit_id: "saxon_wall",
       action: "MOVE",
       semantic_update: { regionId: "valley_floor", tag: "center" },
-      new_tags: ["Disorganized", "Exposed"] // Changed from "Dug-in"
+      new_tags: ["Wavering", "Exposed"]
     },
     {
       unit_id: "norman_cav",
       action: "UPDATE_STATUS",
-      new_tags: ["Counter-Attacking", "Fresh"]
+      new_tags: ["Engaged", "Victorious"]
     }
   ],
   visual_fx: [
-    { type: "DUST", region: "senlac_hill" }, // Movement down hill
-    { type: "IMPACT", target_unit: "saxon_wall" } // Knights hitting them
+    { type: "EXPLOSION", region: "castle-keep" },
+    { type: "DUST", region: "castle-keep" }
   ],
   next_options: [
     {
-      id: "opt_crush",
-      title: "Crush the Exposed",
-      description: "Surround the isolated Saxon units.",
-      semanticAction: "ENCIRCLE",
-      targetLogic: "nearest"
+      id: "opt_storm_breach",
+      title: "Storm the Breach",
+      description: "Pour infantry directly into the castle keep through the new gap.",
+      compositeActions: [
+        { 
+           semanticAction: "SPEARHEAD", 
+           targetLogic: "specific_region", 
+           targetRegionId: "castle-keep", 
+           requiredUnitTypes: ["infantry"], 
+           description: "Assault the keep interior" 
+        }
+      ]
+    },
+    {
+      id: "opt_cut_off",
+      title: "Cut Off Retreat",
+      description: "Send cavalry to the rear gate to prevent escape.",
+      compositeActions: [
+        { 
+           semanticAction: "ENCIRCLE", 
+           targetLogic: "specific_region", 
+           targetRegionId: "rear-gate", 
+           requiredUnitTypes: ["cavalry"],
+           description: "Blockade rear exit"
+        }
+      ]
     }
   ]
 });

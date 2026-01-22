@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronDown, ChevronRight, X, Terminal, GripVertical, Settings, Database, MessageSquare, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react"
+import { ChevronDown, ChevronRight, X, Terminal, GripVertical, Settings, Database, MessageSquare, CheckCircle2, AlertTriangle, Loader2, AlertCircle, Clock, BrainCircuit, FileJson, Copy } from "lucide-react"
 import type { WarRoomScenario, CatalystOption } from "@/lib/types"
 import { useAIStore } from "@/lib/ai/store"
 import { ScenarioGenerationSchema, TurnResolutionSchema } from "@/lib/ai/schemas"
+import { buildTurnPrompt } from "@/lib/ai/prompt-builder"
 import { 
   VISUAL_VOCABULARY, 
   TERRAIN_GUIDE, 
@@ -29,18 +30,18 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
   const [googleModels, setGoogleModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const { 
-    lastScenarioPrompt, lastScenarioSystemPrompt, 
-    lastTurnPrompt, lastTurnSystemPrompt,
     // Legacy / General accessors
-    lastPrompt, lastResponse, isLoading, 
+    isLoading, 
     provider, setConfig, openaiKey, googleKey, selectedModel, 
     scenarioSystemPrompt, turnSystemPrompt,
-    validateKey, isKeyValid, isValidating, validationMessage, isMockMode, toggleMockMode, hasValidKey 
+    validateKey, isKeyValid, validationMessage, isMockMode, toggleMockMode, hasValidKey,
+    history, clearHistory
   } = useAIStore()
   
   const [activeTab, setActiveTab] = useState<Tab>('telemetry')
   const [promptEngineTab, setPromptEngineTab] = useState<'scenario' | 'turn'>('scenario')
   const [knowledgeTab, setKnowledgeTab] = useState('visual')
+  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     aiTelemetry: true,
@@ -50,6 +51,16 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
     selectedAction: false,
     allActions: false,
   })
+
+  // Derived: last scenario prompts for execution log
+  const lastScenarioTx = history.find(h => h.type === 'SCENARIO_GEN');
+  const lastScenarioPrompt = lastScenarioTx?.userPrompt || null;
+  const lastScenarioSystemPrompt = lastScenarioTx?.systemPrompt || null;
+
+  // Derived: last turn prompts for execution log (fix ReferenceError)
+  const lastTurnTx = history.find(h => h.type === 'TURN_RES');
+  const lastTurnPrompt = lastTurnTx?.userPrompt || null;
+  const lastTurnSystemPrompt = lastTurnTx?.systemPrompt || null;
 
   // Fetch available models on mount
   useEffect(() => {
@@ -77,6 +88,19 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
 
     fetchModels();
   }, []);
+
+  // Ensure selectedModel is compatible with provider when models are loaded.
+  useEffect(() => {
+    if (modelsLoading) return;
+    const modelsList = provider === 'openai' ? openaiModels : googleModels;
+    if (!modelsList || modelsList.length === 0) return;
+
+    // If currently selected model is not available in the chosen provider's list, auto-select the first available.
+    if (!selectedModel || !modelsList.includes(selectedModel)) {
+      console.warn(`[debug-panel] Selected model '${selectedModel}' not found for provider '${provider}', auto-switching to '${modelsList[0]}'`);
+      setConfig({ selectedModel: modelsList[0] });
+    }
+  }, [provider, modelsLoading, openaiModels, googleModels, selectedModel, setConfig]);
 
   // Dragging state
   const [position, setPosition] = useState({ x: 20, y: 80 })
@@ -142,6 +166,17 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-cyan-400" />
             <h3 className="font-bold text-sm tracking-widest text-cyan-100 uppercase">System Console</h3>
+            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold flex items-center gap-1 ml-3 ${isMockMode ? 'bg-amber-900/30 text-amber-500' : 'bg-emerald-900/30 text-emerald-500'}`}>
+              {isMockMode ? (
+                'Mock Mode'
+              ) : (
+                <>
+                  <span>{provider}</span>
+                  <span className="opacity-50">/</span>
+                  <span className="truncate max-w-[100px]">{selectedModel}</span>
+                </>
+              )}
+            </span>
           </div>
           <span className="text-[10px] bg-cyan-900/40 px-1.5 py-0.5 rounded text-cyan-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]" title={scenario.name}>
             {scenario.name.split(":")[0]}
@@ -193,24 +228,121 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
                </div>
              </div>
 
-             <div className="space-y-1">
-               <h4 className="font-semibold text-[10px] text-cyan-500 uppercase tracking-wider">Latest Transmission</h4>
-               <textarea 
-                className="w-full h-32 bg-[#050a10] border border-cyan-900/50 p-3 rounded text-[11px] leading-relaxed text-cyan-100 placeholder:text-cyan-800 focus:outline-none focus:border-cyan-500 font-mono"
-                value={lastPrompt}
-                readOnly
-                placeholder="No signals intercepted."
-               />
-             </div>
+             <div className="space-y-2">
+               <div className="flex items-center justify-between">
+                 <h4 className="font-semibold text-[10px] text-cyan-500 uppercase tracking-wider">Transaction History</h4>
+                 <span className="text-[10px] text-cyan-700">{history.length} events</span>
+               </div>
 
-             <div className="space-y-1">
-               <h4 className="font-semibold text-[10px] text-cyan-500 uppercase tracking-wider">Engine Response</h4>
-               <div className="h-48 overflow-y-auto bg-[#050a10] border border-cyan-900/50 p-3 rounded text-[11px] text-cyan-100 font-mono">
-                 <pre className="whitespace-pre-wrap">
-                  {lastResponse && typeof lastResponse === 'object' && Object.keys(lastResponse).length > 0
-                    ? JSON.stringify(lastResponse, null, 2)
-                    : "// Waiting for input..."}
-                 </pre>
+               {/* Transaction List */}
+               <div className="space-y-2 min-h-[400px]">
+                 {history.length === 0 && (
+                   <div className="text-center py-8 text-cyan-800 text-xs italic">
+                     No AI transactions recorded yet.
+                   </div>
+                 )}
+
+                 {history.map((tx) => (
+                   <div key={tx.id} className="rounded border border-cyan-900/30 bg-[#050a10] overflow-hidden">
+                     
+                     {/* Header Row */}
+                     <button 
+                       onClick={() => setExpandedTxId(expandedTxId === tx.id ? null : tx.id)}
+                       className={`w-full flex items-center justify-between p-2 text-xs hover:bg-cyan-900/10 transition-colors ${expandedTxId === tx.id ? 'bg-cyan-900/20' : ''}`}
+                     >
+                       <div className="flex items-center gap-2">
+                         {tx.status === 'success' ? (
+                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                         ) : tx.status === 'error' ? (
+                           <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                         ) : (
+                           <Clock className="w-3.5 h-3.5 text-yellow-500 animate-pulse" />
+                         )}
+                         <span className={`font-bold ${tx.status === 'error' ? 'text-red-400' : 'text-cyan-200'}`}>
+                           {tx.type}
+                         </span>
+                       </div>
+                       <div className="flex items-center gap-3 text-[10px] text-cyan-600 font-mono">
+                         {tx.latency && <span>{tx.latency}ms</span>}
+                         <span>{new Date(tx.timestamp).toLocaleTimeString([], { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' })}</span>
+                       </div>
+                     </button>
+
+                     {/* Expanded Details */}
+                     <AnimatePresence>
+                       {expandedTxId === tx.id && (
+                         <motion.div 
+                           initial={{ height: 0 }} 
+                           animate={{ height: 'auto' }} 
+                           exit={{ height: 0 }} 
+                           className="overflow-hidden border-t border-cyan-900/30"
+                         >
+                           <div className="p-3 space-y-3 bg-[#02050a]">
+                             
+                             {/* 0. Token Stats Header */}
+                             {tx.tokenUsage && (
+                                <div className="flex gap-4 text-[10px] font-mono text-cyan-500 mb-0 p-2 bg-cyan-950/30 rounded border border-cyan-900/50">
+                                  <span>In: <span className="text-cyan-200">{typeof tx.tokenUsage.promptTokens === 'number' ? tx.tokenUsage.promptTokens : '—'}</span> <span className="text-cyan-400">tokens</span></span>
+                                  <span>Out: <span className="text-cyan-200">{typeof tx.tokenUsage.completionTokens === 'number' ? tx.tokenUsage.completionTokens : '—'}</span> <span className="text-cyan-400">tokens</span></span>
+                                  <span className="font-bold ml-auto">Total: <span className="text-cyan-100">{tx.tokenUsage.totalTokens ?? ( (tx.tokenUsage.promptTokens ?? 0) + (tx.tokenUsage.completionTokens ?? 0) )}</span> <span className="text-cyan-400">tokens</span></span>
+                                </div>
+                             )}
+
+                             {/* 1. Chain of Thought (Raw Output) */}
+                             {tx.rawOutput && (
+                               <div className="space-y-1">
+                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 uppercase">
+                                   <BrainCircuit className="w-3 h-3" /> Raw AI Output
+                                 </div>
+                                 <div className="max-h-80 overflow-y-auto p-3 rounded bg-[#02050a] border border-amber-900/20 text-[11px] font-mono whitespace-pre-wrap text-amber-100/80">
+                                   {tx.rawOutput}
+                                 </div>
+                               </div>
+                             )}
+
+                             {/* 2. Error Message (if failed) */}
+                             {tx.error && (
+                               <div className="p-2 rounded bg-red-900/20 border border-red-900/50 text-red-300 text-xs font-mono break-all">
+                                 ERROR: {tx.error}
+                               </div>
+                             )}
+
+                             {/* 3. Payload / Result */}
+                             {tx.rawResponse !== undefined && tx.rawResponse !== null && (
+                               <div className="space-y-1">
+                                 <div className="flex justify-between items-center">
+                                    <div className={`text-[10px] font-bold uppercase ${tx.status === 'error' ? 'text-red-400' : 'text-cyan-600'}`}>
+                                      {tx.status === 'error' ? 'Raw Invalid Output' : 'Extracted JSON'}
+                                    </div>
+                                 </div>
+                                 <div className={`max-h-60 overflow-y-auto rounded p-2 text-[10px] font-mono ${
+                                    tx.status === 'error' ? 'bg-red-900/10 border border-red-900/30 text-red-200/80' : 'bg-black/40 border border-cyan-900/30 text-cyan-100/70'
+                                 }`}>
+                                   <pre className="whitespace-pre-wrap">
+                                     {typeof tx.rawResponse === 'string' 
+                                        ? (tx.rawResponse === "" ? "(server returned empty response)" : tx.rawResponse)
+                                        : JSON.stringify(tx.rawResponse, null, 2)}
+                                   </pre>
+                                 </div>
+                               </div>
+                             )}
+
+                             {/* 4. Inputs (Prompt) */}
+                             <div className="space-y-1 pt-2 border-t border-cyan-900/30">
+                                <div className="text-[10px] font-bold text-cyan-700 uppercase">Input Context</div>
+                                <div className="grid grid-cols-1 gap-1">
+                                   <DetailsAccordion title="System Prompt" content={tx.systemPrompt || "N/A"} />
+                                   {/* If you added userPrompt to AITransaction in step 2: */}
+                                   {/* <DetailsAccordion title="User Prompt" content={tx.userPrompt || "N/A"} /> */}
+                                </div>
+                             </div>
+
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
+                 ))}
                </div>
              </div>
           </div>
@@ -251,11 +383,11 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
                     className="flex-1 bg-[#050a10] border border-cyan-900/50 rounded px-3 py-1.5 text-xs text-cyan-100 focus:border-cyan-400 focus:outline-none placeholder:text-cyan-900"
                   />
                   <button
-                    onClick={() => validateKey(false, selectedModel)}
-                    disabled={isValidating}
+                    onClick={() => validateKey()}
+                    disabled={isLoading}
                     className="px-3 py-1.5 bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 text-xs rounded border border-cyan-900/50 transition-colors disabled:opacity-50"
                   >
-                    {isValidating ? <Loader2 className="w-4 h-4 animate-spin"/> : "Verify"}
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : "Verify"}
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -264,7 +396,7 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
                       type="checkbox"
                       onChange={(e) => {
                         if (e.target.checked) {
-                          validateKey(true, selectedModel); // Skip verification but still pass model
+                          validateKey(); // Skip verification but still pass model (argument removed)
                         }
                       }}
                       className="w-3 h-3 accent-cyan-500"
@@ -319,134 +451,114 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
         {/* PROMPT ENGINEERING TAB */}
         {activeTab === 'prompt' && (
             <div className="flex flex-col h-full bg-[#02050a]">
-                 {/* Internal Tabs - Splitting Scenario vs Turn */}
-                 <div className="flex border-b border-cyan-900/50 bg-[#020810]">
-                    <button 
-                        onClick={() => setPromptEngineTab('scenario')} 
-                        className={`flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors ${promptEngineTab === 'scenario' ? 'text-amber-100 bg-amber-900/20 border-b-2 border-amber-500' : 'text-cyan-600 hover:text-cyan-400'}`}
+                 {/* 1. Sub-Navigation */}
+                 <div className="flex border-b border-cyan-900/50 bg-[#020810] flex-shrink-0">
+                    <button
+                        onClick={() => setPromptEngineTab('scenario')}
+                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${promptEngineTab === 'scenario' ? 'text-amber-400 bg-amber-950/20 border-b-2 border-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        1. Scenario Generator
+                        Scenario Generator
                     </button>
-                    <button 
-                        onClick={() => setPromptEngineTab('turn')} 
-                        className={`flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors ${promptEngineTab === 'turn' ? 'text-cyan-100 bg-[#06121f] border-b-2 border-cyan-400' : 'text-cyan-600 hover:text-cyan-400'}`}
+                    <button
+                        onClick={() => setPromptEngineTab('turn')}
+                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${promptEngineTab === 'turn' ? 'text-cyan-400 bg-cyan-950/20 border-b-2 border-cyan-500' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        2. Turn Referee
+                        Turn Referee
                     </button>
                  </div>
 
-                 {/* Content */}
-                 <div className="p-4 space-y-4 overflow-y-auto">
-                    
-                    {/* SCENARIO GENERATOR TAB */}
-                    {promptEngineTab === 'scenario' && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-bold text-amber-500 uppercase border-b border-amber-900/50 pb-1">AI Persona & User Instructions</h4>
-                                <textarea 
-                                    className="w-full h-24 bg-[#050a10] border border-amber-900/50 p-3 rounded text-[11px] leading-relaxed text-amber-100 placeholder:text-amber-800 focus:outline-none focus:border-amber-500 font-mono resize-y"
-                                    value={scenarioSystemPrompt}
-                                    onChange={(e) => setConfig({ scenarioSystemPrompt: e.target.value })}
-                                    placeholder="Instructions for the Scenario Generator..."
-                                />
-                            </div>
+                 {/* 2. Scrollable Content Area */}
+                 <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
 
-                             {/* Knowledge Base (Relevant subset) */}
-                             <div className="space-y-2">
-                                <h4 className="text-xs font-bold text-amber-500/80 uppercase border-b border-amber-900/30 pb-1">Injected Knowledge</h4>
-                                <div className="grid grid-cols-1 gap-1">
-                                    <DetailsAccordion title="Layout Rules (Painter's Algo)" content={LAYOUT_GENERATION_RULES} />
+                    {/* A. SYSTEM INSTRUCTIONS (Editable) */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-white uppercase flex items-center gap-2">
+                                <Terminal className="w-3 h-3 text-purple-400" />
+                                1. Core Instructions (Editable)
+                            </h4>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                            The base persona and logical constraints.
+                        </p>
+                        <textarea
+                            className="w-full h-32 bg-[#080808] border border-cyan-900/30 rounded p-3 text-[11px] font-mono text-purple-200 focus:outline-none focus:border-cyan-500 resize-y leading-relaxed"
+                            value={promptEngineTab === 'scenario' ? scenarioSystemPrompt : turnSystemPrompt}
+                            onChange={(e) => setConfig(promptEngineTab === 'scenario'
+                                ? { scenarioSystemPrompt: e.target.value }
+                                : { turnSystemPrompt: e.target.value }
+                            )}
+                            spellCheck={false}
+                        />
+                    </div>
+
+                    {/* B. INJECTED KNOWLEDGE (ReadOnly - Restored!) */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-white uppercase flex items-center gap-2">
+                            <Database className="w-3 h-3 text-blue-400" />
+                            2. Injected Knowledge Base
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                            Static rules and vocabulary appended to the system prompt on the server.
+                        </p>
+
+                        <div className="space-y-1">
+                            {promptEngineTab === 'scenario' ? (
+                                <>
+                                    <DetailsAccordion title="Layout Generation Rules" content={LAYOUT_GENERATION_RULES} />
                                     <DetailsAccordion title="Terrain Guide" content={TERRAIN_GUIDE} />
-                                    <DetailsAccordion title="Visual Vocabulary" content={VISUAL_VOCABULARY} />
-                                    <DetailsAccordion title="Few-Shot Example: Battle of Hastings" content={SCENARIO_EXAMPLE_JSON} />
-                                </div>
-                             </div>
-
-                            {/* Execution Log */}
-                            <div className="space-y-2 pt-4 border-t border-amber-900/30">
-                                <h4 className="text-xs font-bold text-amber-400 uppercase flex justify-between">
-                                    <span>Last Execution Log</span>
-                                </h4>
-                                
-                                <div className="space-y-1">
-                                    <div className="text-[10px] text-amber-600 font-bold">1. USER INPUT (The Prompt)</div>
-                                    <div className="h-16 overflow-y-auto bg-[#02050a] border border-amber-900/30 p-2 rounded text-[10px] text-amber-200/80 font-mono whitespace-pre-wrap">
-                                        {lastScenarioPrompt || "No scenario generated yet."}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="text-[10px] text-amber-600 font-bold">2. FULL CONTEXT SENT TO AI (System Prompt + Knowledge)</div>
-                                    <div className="h-32 overflow-y-auto bg-[#02050a] border border-amber-900/30 p-2 rounded text-[10px] text-amber-100 font-mono whitespace-pre-wrap">
-                                        {lastScenarioSystemPrompt || "No data."}
-                                    </div>
-                                </div>
-                            </div>
-
-                             {/* Schemas */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-bold text-amber-500/70 uppercase border-b border-amber-900/30 pb-1">Validation Schema</h4>
-                                <div className="h-24 overflow-y-auto bg-[#050a10] border border-amber-900/50 p-2 rounded text-[10px] text-amber-400 font-mono">
-                                    <pre className="whitespace-pre-wrap">{JSON.stringify(ScenarioGenerationSchema, null, 2)}</pre>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* TURN REFEREE TAB */}
-                    {promptEngineTab === 'turn' && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-bold text-cyan-400 uppercase border-b border-cyan-900/50 pb-1">AI Persona & User Instructions</h4>
-                                <textarea 
-                                    className="w-full h-24 bg-[#050a10] border border-cyan-900/50 p-3 rounded text-[11px] leading-relaxed text-cyan-100 placeholder:text-cyan-800 focus:outline-none focus:border-cyan-500 font-mono resize-y"
-                                    value={turnSystemPrompt}
-                                    onChange={(e) => setConfig({ turnSystemPrompt: e.target.value })}
-                                    placeholder="Instructions for the Turn Referee..."
-                                />
-                            </div>
-
-                             {/* Knowledge Base (Relevant subset) */}
-                             <div className="space-y-2">
-                                <h4 className="text-xs font-bold text-cyan-500/80 uppercase border-b border-cyan-900/30 pb-1">Injected Knowledge</h4>
-                                <div className="grid grid-cols-1 gap-1">
                                     <DetailsAccordion title="Visual Vocabulary (Actions)" content={VISUAL_VOCABULARY} />
-                                    <DetailsAccordion title="Tag Library (Status Effects)" content={TAG_LIBRARY} />
-                                    <DetailsAccordion title="FX Library" content={FX_LIBRARY} />
-                                    <DetailsAccordion title="Few-Shot Example: Turn Resolution" content={TURN_EXAMPLE_JSON} />
-                                </div>
-                             </div>
-
-                            {/* Execution Log */}
-                            <div className="space-y-2 pt-4 border-t border-cyan-900/30">
-                                <h4 className="text-xs font-bold text-cyan-400 uppercase flex justify-between">
-                                    <span>Last Execution Log</span>
-                                </h4>
-                                
-                                <div className="space-y-1">
-                                    <div className="text-[10px] text-cyan-600 font-bold">1. INPUT STATE (The Prompt)</div>
-                                    <div className="h-24 overflow-y-auto bg-[#02050a] border border-cyan-900/30 p-2 rounded text-[10px] text-cyan-200/80 font-mono whitespace-pre-wrap">
-                                        {lastTurnPrompt || "No turn resolved yet."}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="text-[10px] text-cyan-600 font-bold">2. FULL CONTEXT SENT TO AI (System Prompt + Knowledge)</div>
-                                    <div className="h-32 overflow-y-auto bg-[#02050a] border border-cyan-900/30 p-2 rounded text-[10px] text-cyan-100 font-mono whitespace-pre-wrap">
-                                        {lastTurnSystemPrompt || "No data."}
-                                    </div>
-                                </div>
-                            </div>
-
-                             {/* Schemas */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-bold text-cyan-500/70 uppercase border-b border-cyan-900/30 pb-1">Validation Schema</h4>
-                                <div className="h-24 overflow-y-auto bg-[#050a10] border border-cyan-900/50 p-2 rounded text-[10px] text-cyan-400 font-mono">
-                                    <pre className="whitespace-pre-wrap">{JSON.stringify(TurnResolutionSchema, null, 2)}</pre>
-                                </div>
-                            </div>
+                                    <DetailsAccordion title="Tag Library" content={TAG_LIBRARY} />
+                                </>
+                            ) : (
+                                <>
+                                    <DetailsAccordion title="Terrain Physics" content={TERRAIN_GUIDE} />
+                                    <DetailsAccordion title="Visual Vocabulary (Actions)" content={VISUAL_VOCABULARY} />
+                                    <DetailsAccordion title="Tag Library (Status)" content={TAG_LIBRARY} />
+                                    <DetailsAccordion title="FX Library (Visuals)" content={FX_LIBRARY} />
+                                </>
+                            )}
                         </div>
-                    )}
+                    </div>
+
+                    {/* C. LIVE CONTEXT PREVIEW */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-white uppercase flex items-center gap-2">
+                            <MessageSquare className="w-3 h-3 text-cyan-400" />
+                            3. Live Context (The Prompt)
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                            The exact game state data sent as the "User Message" for this specific moment.
+                        </p>
+
+                        <div className="bg-[#080808] border border-cyan-900/30 rounded p-3 max-h-64 overflow-y-auto custom-scrollbar">
+                            <pre className="text-[10px] font-mono text-cyan-300 whitespace-pre-wrap leading-relaxed">
+                                {promptEngineTab === 'scenario'
+                                    ? `[User Input Placeholder]\n"Generate a scenario based on: <YOUR_TEXT_HERE>..."`
+                                    : (selectedTactic
+                                        ? buildTurnPrompt(scenario, selectedTactic, scenario.units.length > 0 ? 1 : 0).trim()
+                                        : "// Select a Tactic Card on the map to generate the live turn context."
+                                      )
+                                }
+                            </pre>
+                        </div>
+                    </div>
+
+                    {/* D. OUTPUT SCHEMA */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-white uppercase flex items-center gap-2">
+                            <FileJson className="w-3 h-3 text-yellow-500" />
+                            4. Expected Output Schema
+                        </h4>
+                        <div className="bg-[#080808] border border-cyan-900/30 rounded p-3 overflow-hidden">
+                           {promptEngineTab === 'scenario' ? (
+                             <ZodSchemaViewer schema={ScenarioGenerationSchema} />
+                           ) : (
+                             <ZodSchemaViewer schema={TurnResolutionSchema} />
+                           )}
+                        </div>
+                    </div>
+
                  </div>
             </div>
         )}
@@ -774,6 +886,57 @@ function DebugSection({
       </AnimatePresence>
     </div>
   )
+}
+
+function ZodSchemaViewer({ schema }: { schema: any }) {
+  // Recursively print keys to simulate JSON structure
+  const renderSchema = (s: any, depth = 0): JSX.Element => {
+    if (!s || !s._def) return <span className="text-slate-500">unknown</span>;
+
+    // Handle ZodObject
+    if (s._def.typeName === 'ZodObject') {
+      const shape = s.shape;
+      return (
+        <div className="ml-2">
+          <span className="text-slate-500">{'{'}</span>
+          {Object.entries(shape).map(([key, value]: [string, any]) => (
+            <div key={key} style={{ paddingLeft: `${(depth + 1) * 10}px` }}>
+              <span className="text-cyan-200">{key}</span>
+              <span className="text-slate-500">: </span>
+              {renderSchema(value, depth + 1)}
+            </div>
+          ))}
+          <span className="text-slate-500" style={{ paddingLeft: `${depth * 10}px` }}>{'}'}</span>
+        </div>
+      );
+    }
+
+    // Handle ZodArray
+    if (s._def.typeName === 'ZodArray') {
+      return (
+        <span>
+          <span className="text-yellow-500">Array</span>
+          <span className="text-slate-500">&lt;</span>
+          {renderSchema(s.element, depth)}
+          <span className="text-slate-500">&gt;</span>
+        </span>
+      );
+    }
+
+    // Handle Primitives & Enums
+    if (s._def.typeName === 'ZodEnum') return <span className="text-green-400">Enum({s._def.values.join('|')})</span>;
+    if (s._def.typeName === 'ZodString') return <span className="text-orange-400">String</span>;
+    if (s._def.typeName === 'ZodNumber') return <span className="text-blue-400">Number</span>;
+    if (s._def.typeName === 'ZodOptional') return <span>{renderSchema(s.unwrap(), depth)} <span className="text-slate-600 italic">(opt)</span></span>;
+
+    return <span className="text-slate-500">{s._def.typeName}</span>;
+  };
+
+  return (
+    <div className="font-mono text-[10px] leading-relaxed">
+      {renderSchema(schema)}
+    </div>
+  );
 }
 
 function InfoRow({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {

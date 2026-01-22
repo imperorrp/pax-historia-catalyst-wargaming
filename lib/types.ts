@@ -222,6 +222,7 @@ export interface WarRoomScenario {
     width: number
     height: number
   }
+  narrative_intro?: string
   decorations?: MapDecoration[]; // NEW: Non-gameplay visual layers (rivers, roads, labels)
   hexGrid?: HexData[];
   // Optional lookup map for fast hex->pixel access keyed by "q,r"
@@ -249,12 +250,26 @@ export interface HexData {
 }
 
 export interface AIGameResponse {
-  narrative_update: string
-  state_changes: StateChange[]
-  visual_fx: VisualEffect[]
-  next_options: CatalystOption[]
+  // New Schema Alignment
+  thought_chain?: string;
+  narrative_outcome: string; // Was narrative_update
+  unit_updates: UnitUpdate[]; // Was state_changes
+  visual_fx: VisualEffect[];
+  next_tactical_options: CatalystOption[]; // Was next_options
+  
+  // Deprecated fields (kept optional to safely handle old data if any)
+  narrative_update?: string;
+  state_changes?: StateChange[];
+  next_options?: CatalystOption[];
 }
 
+export interface UnitUpdate {
+  unitId: string;
+  status: "fresh" | "engaged" | "wavering" | "routing" | "eliminated";
+  position_update?: SemanticPlacement;
+}
+
+// Deprecated but kept for reference
 export interface StateChange {
   unit_id: string
   action: "MOVE" | "UPDATE_STATUS" | "REMOVE"

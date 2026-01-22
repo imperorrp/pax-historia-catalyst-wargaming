@@ -62,8 +62,10 @@ export function DispatchLog({
                 }`}
               >
                 <div className="font-mono text-xs">R{entry.round}</div>
-                {entry.tacticUsed && (
+                {entry.tacticUsed ? (
                   <div className="text-xs opacity-75 truncate">{entry.tacticUsed.title}</div>
+                ) : (
+                  <div className="text-[10px] opacity-50 italic truncate">Planning...</div>
                 )}
               </button>
             ))}

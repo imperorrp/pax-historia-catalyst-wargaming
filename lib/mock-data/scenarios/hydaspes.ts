@@ -19,6 +19,9 @@ export const hydaspes: WarRoomScenario = {
     era: "Ancient",
     playerPolity: "Macedonia",
     enemyPolity: "Paurava Kingdom",
+    narrative_intro: `The Indian subcontinent, 326 BC. Alexander’s armies, having marched from the Mediterranean to the edge of the known world, now face the monsoon-swollen Hydaspes River. Beyond its muddy banks, King Porus commands a host of elephants and chariots, determined to defend his homeland from foreign conquest.
+
+This is not just a clash of armies, but of civilizations—Greek ambition meets Indian resolve. The outcome will shape the limits of empire, the spread of Hellenistic culture, and the legends told from Athens to the Ganges. The river’s crossing is more than a tactical challenge; it is a test of will at the edge of the world.`,
     mapDimensions: { width: 900, height: 700 },
     mapRegions: generatePaintedMap(HYDASPES_LAYOUT, 900, 700),
     layoutDefs: HYDASPES_LAYOUT,

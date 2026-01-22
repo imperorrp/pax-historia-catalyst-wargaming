@@ -15,6 +15,9 @@ export const redCliffs: WarRoomScenario = {
     era: "Ancient",
     playerPolity: "Sun-Liu Alliance",
     enemyPolity: "Cao Cao's Armada",
+    narrative_intro: `China, late Han Dynasty, 208 AD. The mighty Yangtze River divides north from south as the Han Empire crumbles and ambitious warlords vie for supremacy. Cao Cao’s vast armada, forged from the resources of the north, seeks to crush the southern coalitions and unify the realm under a single banner.
+
+But the river is more than a barrier—it is a stage for cunning and audacity. The Sun-Liu alliance, outnumbered and outgunned, must use fire, wind, and deception to turn the tide. The Battle of Red Cliffs will decide the fate of dynasties, inspire poets for centuries, and shape the very soul of China’s Three Kingdoms era.`,
     mapDimensions: { width: 1000, height: 700 },
     mapRegions: generatePaintedMap(RED_CLIFFS_LAYOUT, 1000, 700),
     layoutDefs: RED_CLIFFS_LAYOUT,

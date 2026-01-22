@@ -27,6 +27,9 @@ export const trafalgar: WarRoomScenario = {
     era: "Napoleonic",
     playerPolity: "Britain",
     enemyPolity: "France & Spain",
+    narrative_intro: `Atlantic Ocean, October 1805. The Napoleonic Wars rage across Europe, and the fate of empires is decided not only on land but on the high seas. Napoleon’s dreams of invasion hinge on breaking British naval supremacy, while the Royal Navy stands as the last bulwark against continental domination.
+
+Off Cape Trafalgar, two great fleets converge in a contest of courage, innovation, and national destiny. The outcome will determine the course of the war, the security of the British Isles, and the future of global trade and empire. The wind, the waves, and the will of admirals will shape the world for generations to come.`,
     mapDimensions: {
       width: 800,
       height: 600,

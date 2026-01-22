@@ -14,6 +14,11 @@ export const blitzkrieg: WarRoomScenario = {
     era: "WW2",
     playerPolity: "Germany",
     enemyPolity: "France",
+    narrative_intro: `Europe, May 1940. The world stands on the brink of a new era as the German war machine unleashes Blitzkrieg—lightning war—across the West.
+
+France, still haunted by the scars of the Great War, trusts in the Maginot Line and the traditions of static defense. But the Ardennes, thought impassable, become the stage for a daring gamble. The fate of nations hangs in the balance as tanks and mechanized infantry surge through forests and river valleys, aiming to split the Allied armies and encircle Paris.
+
+The collapse of France would send shockwaves across the globe, shattering the old order and ushering in years of darkness and resistance. The Sedan sector is not just a battlefield—it is the fulcrum on which the future of Europe pivots.`,
     mapDimensions: {
       width: 900,
       height: 700,

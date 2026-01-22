@@ -6,20 +6,18 @@ import { motion } from "framer-motion"
 import { MapPin } from "lucide-react"
 
 export function ScenarioSwitcher() {
-  const { currentScenario, setScenario } = useTargetingStore()
-
-  const scenarioList = Object.values(SCENARIOS)
+  const { currentScenario, setScenario, availableScenarios } = useTargetingStore()
 
   return (
     <div className="flex items-center gap-2">
       <MapPin className="w-4 h-4 text-amber-700 flex-shrink-0" />
-      <div className="flex gap-2">
-        {scenarioList.map((scenario) => (
+      <div className="flex gap-2 overflow-x-auto max-w-[40vw] pb-1 scrollbar-hide">
+        {availableScenarios.map((scenario) => (
           <motion.button
             key={scenario.id}
             onClick={() => setScenario(scenario)}
             className={`
-              px-3 py-1.5 rounded-lg font-serif text-xs font-bold transition-all
+              px-3 py-1.5 rounded-lg font-serif text-xs font-bold transition-all whitespace-nowrap
               ${
                 currentScenario?.id === scenario.id
                   ? "bg-amber-900 text-amber-50 shadow-md"
