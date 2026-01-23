@@ -1,6 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
+import { X } from "lucide-react"
 
 interface HelpModalProps {
   isOpen: boolean
@@ -25,6 +26,13 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
             onClick={(e) => e.stopPropagation()}
             className="bg-amber-50 rounded-lg shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto border border-amber-900/20 backdrop-blur-sm"
           >
+            <button
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              aria-label="Close Help"
+              className="absolute top-3 right-3 p-2 rounded-md text-amber-700 hover:bg-amber-100/60 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
             <div className="p-6">
               <h2 className="text-2xl font-serif font-bold text-amber-900 mb-4">War Room Guide</h2>
 

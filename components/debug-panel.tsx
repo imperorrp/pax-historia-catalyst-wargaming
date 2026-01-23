@@ -107,6 +107,15 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const panelRef = useRef<HTMLDivElement>(null)
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -114,7 +123,7 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
 
   // Handle drag start
   const handleDragStart = (e: React.MouseEvent) => {
-    if (!panelRef.current) return
+    if (isMobile || !panelRef.current) return
     const rect = panelRef.current.getBoundingClientRect()
     setDragOffset({
       x: e.clientX - rect.left,
@@ -125,7 +134,7 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
 
   // Handle drag move
   useEffect(() => {
-    if (!isDragging) return
+    if (!isDragging || isMobile) return
     const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - dragOffset.x
       const newY = e.clientY - dragOffset.y
@@ -140,16 +149,21 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, dragOffset])
+  }, [isDragging, dragOffset, isMobile])
 
   return (
     <motion.div
       ref={panelRef}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="fixed z-[100] w-[460px] max-h-[80vh] flex flex-col bg-[#03040a]/95 backdrop-blur-md shadow-2xl border border-cyan-900 rounded-lg overflow-hidden font-mono text-cyan-200"
-      style={{
+      initial={{ opacity: 0, scale: 0.95, y: isMobile ? 100 : 0 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: isMobile ? 100 : 0 }}
+      className={`fixed z-[100] flex flex-col bg-[#03040a]/95 backdrop-blur-md shadow-2xl border border-cyan-900 overflow-hidden font-mono text-cyan-200
+        ${isMobile 
+          ? "inset-x-0 bottom-0 top-[15%] w-full rounded-t-xl" 
+          : "w-[460px] max-h-[80vh] rounded-lg"
+        }
+      `}
+      style={isMobile ? {} : {
         left: `${position.x}px`,
         top: `${position.y}px`,
         boxShadow: "0 0 40px rgba(8, 145, 178, 0.15)"
@@ -158,8 +172,8 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
       {/* Header */}
       <div 
         className="px-4 py-3 flex items-center justify-between border-b border-cyan-900/50 bg-gradient-to-r from-[#041018] to-[#021018]"
-        onMouseDown={handleDragStart}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        onMouseDown={!isMobile ? handleDragStart : undefined}
+        style={{ cursor: isMobile ? 'default' : (isDragging ? 'grabbing' : 'grab') }}
       >
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">

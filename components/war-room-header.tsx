@@ -102,7 +102,7 @@ export function WarRoomHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 md:gap-2">
+          <div className="flex items-center gap-1 md:gap-2 flex-wrap">
             <div className="hidden md:block text-xs font-serif italic text-amber-800/70 border-r border-amber-900/10 pr-2">
               {currentScenario.playerPolity} vs {currentScenario.enemyPolity}
             </div>
@@ -132,22 +132,24 @@ export function WarRoomHeader({
 
             <button
               onClick={onToggleDebug}
-              className={`p-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              aria-label="Open System Console"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                 debugMode
                   ? "bg-cyan-950 text-cyan-400 border border-cyan-500/50 shadow-lg shadow-cyan-900/20"
-                  : "hover:bg-amber-900/10 text-amber-800"
+                  : "bg-amber-900/5 text-amber-800 hover:bg-amber-900/10"
               }`}
-              title="Open System Console"
             >
               <Terminal className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase hidden sm:inline">CONSOLE</span>
+              <span className="uppercase">CONSOLE</span>
             </button>
+
             <button
               onClick={onHelpOpen}
-              className="p-1.5 hover:bg-amber-900/10 rounded-lg transition-colors text-amber-800"
-              title="Help Guide"
+              aria-label="Open Help Guide"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-900/5 text-amber-800 hover:bg-amber-900/10 transition-colors"
             >
               <HelpCircle className="w-4 h-4" />
+              <span className="uppercase">HELP</span>
             </button>
           </div>
         </div>

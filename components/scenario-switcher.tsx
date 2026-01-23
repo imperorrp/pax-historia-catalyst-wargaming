@@ -11,7 +11,7 @@ export function ScenarioSwitcher() {
   return (
     <div className="flex items-center gap-2">
       <MapPin className="w-4 h-4 text-amber-700 flex-shrink-0" />
-      <div className="flex gap-2 overflow-x-auto max-w-[40vw] pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto max-w-[50vw] md:max-w-[40vw] pb-1 scrollbar-hide">
         {availableScenarios.map((scenario) => (
           <motion.button
             key={scenario.id}
