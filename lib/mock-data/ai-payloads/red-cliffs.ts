@@ -27,7 +27,7 @@ export const RED_CLIFFS_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tk_pursue_cao",
         title: "Pursue Cao Cao",
         description: "Don't let the warlord escape through Huarong Trail.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Pursue Cao Cao" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Pursue Cao Cao", targetLogic: "lowest_health" }]
       }
     ]
   },
@@ -57,7 +57,7 @@ export const RED_CLIFFS_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tk_fire_attack",
         title: "Fire Attack Opportunity",
         description: "They are bunched up. Use fire now!",
-        compositeActions: [{ semanticAction: "FIRE_SHIP", description: "Fire attack" }]
+        compositeActions: [{ semanticAction: "FIRE_SHIP", description: "Fire attack", targetLogic: "density" }]
       }
     ]
   },
@@ -87,7 +87,7 @@ export const RED_CLIFFS_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tk_final_push",
         title: "All-Out Assault",
         description: "Strike while they are weak.",
-        compositeActions: [{ semanticAction: "COMBINED_ASSAULT", description: "All-out assault" }]
+        compositeActions: [{ semanticAction: "COMBINED_ASSAULT", description: "All-out assault", targetLogic: "region", targetRegionId: "cao_camp" }]
       }
     ]
   },
@@ -123,7 +123,7 @@ export const RED_CLIFFS_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tk_victory",
         title: "A Tripartite World",
         description: "The Three Kingdoms era begins.",
-        compositeActions: [{ semanticAction: "VICTORY", description: "Victory" }]
+        compositeActions: [{ semanticAction: "VICTORY", description: "Victory", targetLogic: "self" }]
       }
     ]
   }

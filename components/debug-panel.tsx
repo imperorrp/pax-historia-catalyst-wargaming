@@ -350,7 +350,7 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
                              <div className="space-y-1 pt-2 border-t border-cyan-900/30">
                                 <div className="text-[10px] font-bold text-cyan-700 uppercase">Input Context</div>
                                 <div className="grid grid-cols-1 gap-1">
-                                   <DetailsAccordion title="System Prompt" content={tx.systemPrompt || "N/A"} />
+                                   <TelemetryPrompt tx={tx} />
                                    {/* If you added userPrompt to AITransaction in step 2: */}
                                    {/* <DetailsAccordion title="User Prompt" content={tx.userPrompt || "N/A"} /> */}
                                 </div>
@@ -641,6 +641,43 @@ function DetailsAccordion({ title, content }: { title: string, content: string }
           {content}
         </div>
       )}
+    </div>
+  )
+}
+
+function TelemetryPrompt({ tx }: { tx: any }) {
+  const { isMockMode } = useAIStore();
+  const [copied, setCopied] = useState(false);
+
+  const isMockTx = Boolean(tx.rawResponse && String(tx.rawResponse._note || '').toUpperCase().includes('MOCK')) || (tx.type === 'TURN_RES' && isMockMode);
+
+  const promptContent = isMockTx ? "Mock data — no system prompt (no AI call was made)" : (tx.systemPrompt || "N/A");
+
+  const handleCopy = async () => {
+    try {
+      const text = tx.systemPrompt || (typeof tx.rawResponse === 'string' ? tx.rawResponse : JSON.stringify(tx.rawResponse || tx.rawOutput || {}, null, 2));
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (e) {
+      console.error('Copy failed', e);
+    }
+  }
+
+  return (
+    <div className="flex items-start gap-2">
+      <div className="flex-1">
+        <DetailsAccordion title="System Prompt" content={promptContent} />
+      </div>
+      <div className="pt-1">
+        <button
+          title="Copy prompt"
+          onClick={handleCopy}
+          className={`p-2 rounded-md bg-[#021719] border border-cyan-900/30 hover:bg-[#032425] transition-colors text-cyan-200`}
+        >
+          {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+        </button>
+      </div>
     </div>
   )
 }

@@ -11,6 +11,7 @@ interface HistoryEntry {
   scenario: WarRoomScenario
   narrative: string
   tacticUsed: CatalystOption | null
+  gameResponse: AIGameResponse | null
 }
 
 interface TargetingStore {
@@ -45,7 +46,7 @@ interface TargetingStore {
   goToPreviousRound: () => void
   goToNextRound: () => void
   jumpToRound: (index: number) => void
-  saveToHistory: (scenario: WarRoomScenario, narrative: string, tactic: CatalystOption | null) => void
+  saveToHistory: (scenario: WarRoomScenario, narrative: string, tactic: CatalystOption | null, gameResponse: AIGameResponse | null) => void
   toggleDebugMode: () => void
 }
 
@@ -132,7 +133,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
         currentRound: 1,
         selectedTactic: null,
         state: "idle",
-        history: [{ round: 1, scenario: hydratedScenario, narrative: "Initial deployment", tacticUsed: null }],
+        history: [{ round: 1, scenario: hydratedScenario, narrative: "Initial deployment", tacticUsed: null, gameResponse: null }],
         historyIndex: 0,
         // Append new scenario to the list if it's new
         availableScenarios: exists 
@@ -151,7 +152,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
 
   setAnimating: (animating) => set({ isAnimating: animating }),
 
-  saveToHistory: (scenario, narrative, tactic) => {
+  saveToHistory: (scenario, narrative, tactic, gameResponse) => {
     const { history, historyIndex } = get()
     
     // 1. Finalize the CURRENT entry (the one just completed)
@@ -160,7 +161,8 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
        updatedHistory[historyIndex] = {
          ...updatedHistory[historyIndex],
          narrative: narrative, // Store the result narrative here
-         tacticUsed: tactic // Ensure the tactic is frozen here
+         tacticUsed: tactic, // Ensure the tactic is frozen here
+         gameResponse, // Store the AI response for this turn
        }
     }
 
@@ -170,6 +172,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
       scenario, // The new state
       narrative: "Awaiting orders...", // Placeholder
       tacticUsed: null, // <--- KEY FIX: Start null
+      gameResponse: null,
     })
 
     set({ history: updatedHistory, historyIndex: updatedHistory.length - 1 })
@@ -188,6 +191,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
         currentScenario: hydrateScenarioLayout(prevEntry.scenario),
         selectedTactic: null, // selectedTactic is only for current round selections
         state: prevEntry.tacticUsed ? "tactic_selected" : "idle",
+        gameResponse: prevEntry.gameResponse,
       })
     }
   },
@@ -205,6 +209,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
         currentScenario: hydrateScenarioLayout(nextEntry.scenario),
         selectedTactic: null, // selectedTactic is only for current round selections
         state: nextEntry.tacticUsed ? "tactic_selected" : "idle",
+        gameResponse: nextEntry.gameResponse,
       })
     }
   },
@@ -221,6 +226,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
         currentScenario: hydrateScenarioLayout(entry.scenario),
         selectedTactic: null, // selectedTactic is only for current round selections
         state: entry.tacticUsed ? "tactic_selected" : "idle",
+        gameResponse: entry.gameResponse,
       })
     }
   },

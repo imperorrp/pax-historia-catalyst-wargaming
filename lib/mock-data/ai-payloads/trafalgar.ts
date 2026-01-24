@@ -39,19 +39,19 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tf_pursue",
         title: "General Chase",
         description: "Pursue fleeing enemy ships individually.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Chase" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Chase", targetLogic: "weakest" }]
       },
       {
         id: "tf_board",
         title: "Board Flagships",
         description: "Attempt to capture the enemy commanders.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Capture commanders" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Capture commanders", targetLogic: "nearest" }]
       },
       {
         id: "tf_anchor",
         title: "Anchor to Weather Storm",
         description: "Prepare for the approaching gale.",
-        compositeActions: [{ semanticAction: "FORTIFY", description: "Anchor ships" }]
+        compositeActions: [{ semanticAction: "FORTIFY", description: "Anchor ships", targetLogic: "self" }]
       }
     ]
   },
@@ -90,13 +90,13 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tf_support",
         title: "Support the Flagship",
         description: "Send reserves to save HMS Victory.",
-        compositeActions: [{ semanticAction: "SPEARHEAD", description: "Rescue Nelson" }]
+        compositeActions: [{ semanticAction: "SPEARHEAD", description: "Rescue Nelson", targetLogic: "ally_distress" }]
       },
       {
         id: "tf_break_off",
         title: "Break Contact",
         description: "Disengage to repair rigging.",
-        compositeActions: [{ semanticAction: "RETREAT", description: "Repair rigging" }]
+        compositeActions: [{ semanticAction: "RETREAT", description: "Repair rigging", targetLogic: "self" }]
       }
     ]
   },
@@ -128,13 +128,13 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
         id: "tf_close_range",
         title: "Close the Range",
         description: "Attempt to close to pistol shot distance.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Close pistol range" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Close pistol range", targetLogic: "nearest" }]
       },
       {
         id: "tf_withdraw",
         title: "Tactical Withdrawal",
         description: "Turn away to regroup.",
-        compositeActions: [{ semanticAction: "RETREAT", description: "Withdraw" }]
+        compositeActions: [{ semanticAction: "RETREAT", description: "Withdraw", targetLogic: "self" }]
       }
     ]
   },

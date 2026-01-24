@@ -127,9 +127,11 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const debugMode = useTargetingStore((s) => s.debugMode)
   const history = useTargetingStore((s) => s.history)
   const historyIndex = useTargetingStore((s) => s.historyIndex)
+  const gameResponse = useTargetingStore((s) => s.gameResponse)
   const [showLayerPanel, setShowLayerPanel] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null); // NEW STATE
+  const [tick, setTick] = useState(0); // Animation Frame Tick
 
   // Zoom and Pan State
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
@@ -684,9 +686,8 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
 
     // 6. Render Visual Effects from AI Response
-    const aiResponse = useTargetingStore.getState().gameResponse;
-    if (aiResponse && aiResponse.visual_fx && visibleLayers.units) {
-      aiResponse.visual_fx.forEach((fx) => {
+    if (gameResponse && gameResponse.visual_fx && visibleLayers.units) {
+      gameResponse.visual_fx.forEach((fx) => {
         let fxLoc = { x: 400, y: 300 }; // Default center
         
         // Resolve effect location
@@ -770,7 +771,24 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     }
 
     setIsRendered(true)
-  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers, hoveredRegion, debugMode]) // Fixed dep array to prevent rerenders
+  }, [scenario.id, scenario.hexGrid, scenario.units, selectedTactic, visibleLayers, hoveredRegion, debugMode, gameResponse, tick]) // Added tick for animation
+
+  // Animation Loop for Visual Effects
+  useEffect(() => {
+    let animId: number;
+    // Only animate if there are active visual effects
+    if (gameResponse?.visual_fx && gameResponse.visual_fx.length > 0) {
+      const loop = () => {
+        setTick(t => t + 1);
+        animId = requestAnimationFrame(loop);
+      }
+      // Lower frame rate slightly to save performance? No, let's go full speed
+      animId = requestAnimationFrame(loop);
+    }
+    return () => {
+      if(animId) cancelAnimationFrame(animId);
+    }
+  }, [gameResponse?.visual_fx]);
 
   const [clientReady, setClientReady] = useState(false);
   useEffect(() => { setClientReady(true) }, []);

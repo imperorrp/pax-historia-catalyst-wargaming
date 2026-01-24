@@ -143,7 +143,7 @@ export function WarRoomLayout() {
       currentScenario: updatedScenario,
     })
 
-    saveToHistory(updatedScenario, narrative, selectedTactic)
+    saveToHistory(updatedScenario, narrative, selectedTactic, response)
     incrementRound()
     console.log("[v0] Round incremented to:", currentRound + 1)
 

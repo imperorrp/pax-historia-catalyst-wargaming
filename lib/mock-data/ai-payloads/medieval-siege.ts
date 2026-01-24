@@ -26,7 +26,7 @@ export const MEDIEVAL_SIEGE_PAYLOADS: Record<string, AIGameResponse> = {
         id: "med_storm",
         title: "Storm the Breach",
         description: "Infantry charge into the gap.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Storm the breach" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Storm the breach", targetLogic: "region", targetRegionId: "castle-keep" }]
       }
     ]
   },
@@ -56,7 +56,7 @@ export const MEDIEVAL_SIEGE_PAYLOADS: Record<string, AIGameResponse> = {
         id: "med_open_gates",
         title: "Open the Gates",
         description: "Secure the gatehouse from inside.",
-        compositeActions: [{ semanticAction: "GATES_OPEN", description: "Open gates" }]
+        compositeActions: [{ semanticAction: "GATES_OPEN", description: "Open gates", targetLogic: "region", targetRegionId: "gatehouse" }]
       }
     ]
   },
@@ -85,7 +85,7 @@ export const MEDIEVAL_SIEGE_PAYLOADS: Record<string, AIGameResponse> = {
         id: "med_starve",
         title: "Demand Surrender",
         description: "They have no food left.",
-        compositeActions: [{ semanticAction: "DIPLOMACY", description: "Demand surrender" }]
+        compositeActions: [{ semanticAction: "DIPLOMACY", description: "Demand surrender", targetLogic: "nearest" }]
       }
     ]
   },
@@ -114,7 +114,7 @@ export const MEDIEVAL_SIEGE_PAYLOADS: Record<string, AIGameResponse> = {
         id: "med_counter_attack",
         title: "Counter-Attack Relief",
         description: "Drive them off completely.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Counter-attack" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Counter-attack", targetLogic: "nearest" }]
       }
     ]
   }

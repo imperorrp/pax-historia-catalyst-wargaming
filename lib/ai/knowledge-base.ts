@@ -28,20 +28,37 @@ AVAILABLE VISUAL ACTIONS (Use these for 'semanticAction'):
   * "ENCIRCLE": Pincer movement. Use when surrounding.
   * "INFILTRATE": Serpentine line. Use for stealth/spies.
   * "SPEARHEAD": Thick aggressive arrow. Use for breakthroughs.
+  * "MANEUVER": Curved path with ship silhouette. Use for naval positioning.
+  * "FEINT": Phantom arrow. Use for deceptive movement.
 
 - COMBAT:
   * "ASSAULT": Direct combat arrow with limit bar.
   * "BOMBARD": Explosive icon. Use for artillery/cannons.
   * "RAIN_ARROWS": Arcing projectile lines. Use for archers.
   * "TRAMPLE": Thick blunt arrow. Use for Elephants/Heavy Cavalry.
+  * "SUPPRESS": Cone of fire. Use for covering fire/suppression.
+  * "AIRSTRIKE": Plane path with explosion. Modern/Sci-fi.
+  * "COMBINED_ASSAULT": Coordinated multi-arm attack (Arty+Inf+Cav).
+  * "REGION_BOMBARDMENT": Area-wide bombardment.
+
+- NAVAL WARFARE:
   * "NAVAL_RAM": Heavy impact arrow. Use for ships.
   * "FIRE_SHIP": Gradient flame arrow. Use for incendiary attacks.
+  * "BROADSIDES": Cannon blasts from side. Standard naval attack.
+  * "RAKING_FIRE": Sweeping fire along target length.
+  * "BOARDING": Grappling hooks and boarding party.
+  * "LINE_OF_BATTLE": Formed battle line parallel to enemy.
+  * "BLOCKADE": Static containment.
 
-- SPECIAL:
+- SPECIAL / TACTICAL:
   * "HACK": Digital jagged line (Green). Use for Cyberpunk.
   * "EMP_BLAST": Area disruption. 
   * "FORTIFY": Defensive sawtooth line.
   * "AMBUSH": Question mark icon.
+  * "HOLD": Circular positional defense.
+  * "RECON": Radar rings/scouting.
+  * "SEVER_SUPPLY": Logistics cut.
+  * "GATES_OPEN": Betrayal/opening (Stealth visual).
 `;
 
 export const TERRAIN_GUIDE = `

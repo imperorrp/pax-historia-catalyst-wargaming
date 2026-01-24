@@ -26,7 +26,7 @@ export const HYDASPES_PAYLOADS: Record<string, AIGameResponse> = {
         id: "hyd_hammer_anvil",
         title: "Hammer and Anvil",
         description: "Crush the infantry between the phalanx and cavalry.",
-        compositeActions: [{ semanticAction: "ENCIRCLE", description: "Hammer and anvil" }]
+        compositeActions: [{ semanticAction: "ENCIRCLE", description: "Hammer and anvil", targetLogic: "flank" }]
       }
     ]
   },
@@ -51,7 +51,7 @@ export const HYDASPES_PAYLOADS: Record<string, AIGameResponse> = {
         id: "hyd_advance",
         title: "General Advance",
         description: "Push forward while they are disorganized.",
-        compositeActions: [{ semanticAction: "ADVANCE", description: "General advance" }]
+        compositeActions: [{ semanticAction: "ADVANCE", description: "General advance", targetLogic: "nearest" }]
       }
     ]
   },
@@ -76,7 +76,7 @@ export const HYDASPES_PAYLOADS: Record<string, AIGameResponse> = {
         id: "hyd_hold",
         title: "Maintain Formation",
         description: "Keep the line steady.",
-        compositeActions: [{ semanticAction: "HOLD", description: "Hold formation" }]
+        compositeActions: [{ semanticAction: "HOLD", description: "Hold formation", targetLogic: "self" }]
       }
     ]
   },
@@ -106,7 +106,7 @@ export const HYDASPES_PAYLOADS: Record<string, AIGameResponse> = {
         id: "hyd_withdraw",
         title: "Withdraw Cavalry",
         description: "Pull back before losses mount.",
-        compositeActions: [{ semanticAction: "RETREAT", description: "Withdraw cavalry" }]
+        compositeActions: [{ semanticAction: "RETREAT", description: "Withdraw cavalry", targetLogic: "self" }]
       }
     ]
   }

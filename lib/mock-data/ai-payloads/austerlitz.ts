@@ -27,7 +27,7 @@ export const AUSTERLITZ_PAYLOADS: Record<string, AIGameResponse> = {
         id: "nap_encircle",
         title: "Encircle the Flanks",
         description: "Turn the guns of the heights onto the trapped enemy wings.",
-        compositeActions: [{ semanticAction: "ENCIRCLE", description: "Encircle flanks" }]
+        compositeActions: [{ semanticAction: "ENCIRCLE", description: "Encircle flanks", targetLogic: "flank" }]
       }
     ]
   },
@@ -57,7 +57,7 @@ export const AUSTERLITZ_PAYLOADS: Record<string, AIGameResponse> = {
         id: "nap_spring_trap",
         title: "Spring the Trap",
         description: "Launch the counter-attack on their exposed flank.",
-        compositeActions: [{ semanticAction: "DIVERSION", description: "Counter-attack" }]
+        compositeActions: [{ semanticAction: "DIVERSION", description: "Counter-attack", targetLogic: "nearest" }]
       }
     ]
   },
@@ -88,7 +88,7 @@ export const AUSTERLITZ_PAYLOADS: Record<string, AIGameResponse> = {
           id: "nap_glory",
           title: "Victory Parade",
           description: "Inspect the field.",
-          compositeActions: [{ semanticAction: "VICTORY", description: "Victory" }]
+          compositeActions: [{ semanticAction: "VICTORY", description: "Victory", targetLogic: "self" }]
         }
     ]
   },
@@ -118,7 +118,7 @@ export const AUSTERLITZ_PAYLOADS: Record<string, AIGameResponse> = {
           id: "nap_take_heights",
           title: "Seize the Heights",
           description: "Infantry forward.",
-          compositeActions: [{ semanticAction: "ADVANCE", description: "Seize heights" }]
+          compositeActions: [{ semanticAction: "ADVANCE", description: "Seize heights", targetLogic: "region", targetRegionId: "pratzen-heights" }]
         }
     ]
   }

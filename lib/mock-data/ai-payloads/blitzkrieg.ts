@@ -27,7 +27,7 @@ export const BLITZKRIEG_PAYLOADS: Record<string, AIGameResponse> = {
         id: "bk_pursue",
         title: "Race to the Sea",
         description: "Drive north to cut off Allied armies.",
-        compositeActions: [{ semanticAction: "ADVANCE", description: "Race to sea" }]
+        compositeActions: [{ semanticAction: "ADVANCE", description: "Race to sea", targetLogic: "region", targetRegionId: "coast" }]
       }
     ]
   },
@@ -56,7 +56,7 @@ export const BLITZKRIEG_PAYLOADS: Record<string, AIGameResponse> = {
         id: "bk_secure_bridges",
         title: "Secure Crossings",
         description: "Seize the Meuse bridges.",
-        compositeActions: [{ semanticAction: "SPEARHEAD", description: "Secure bridges" }]
+        compositeActions: [{ semanticAction: "SPEARHEAD", description: "Secure bridges", targetLogic: "region", targetRegionId: "meuse-river" }]
       }
     ]
   },
@@ -87,7 +87,7 @@ export const BLITZKRIEG_PAYLOADS: Record<string, AIGameResponse> = {
         id: "bk_assault_forts",
         title: "Assault Fortifications",
         description: "Send combat engineers to clear bunkers.",
-        compositeActions: [{ semanticAction: "ASSAULT", description: "Assault bunkers" }]
+        compositeActions: [{ semanticAction: "ASSAULT", description: "Assault bunkers", targetLogic: "nearest" }]
       }
     ]
   },
@@ -125,7 +125,7 @@ export const BLITZKRIEG_PAYLOADS: Record<string, AIGameResponse> = {
         id: "bk_fall_of_france",
         title: "Drive to Paris",
         description: "End the campaign.",
-        compositeActions: [{ semanticAction: "VICTORY", description: "Victory in Paris" }]
+        compositeActions: [{ semanticAction: "VICTORY", description: "Victory in Paris", targetLogic: "region", targetRegionId: "paris" }]
       }
     ]
   }

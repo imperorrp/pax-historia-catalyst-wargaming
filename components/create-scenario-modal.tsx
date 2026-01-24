@@ -143,7 +143,7 @@ export function CreateScenarioModal({
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-gradient-to-br from-amber-50 to-white rounded-2xl shadow-2xl max-w-2xl w-full border-2 border-amber-200 overflow-hidden"
+            className="bg-gradient-to-br from-amber-50 to-white rounded-2xl shadow-2xl max-w-2xl w-full border-2 border-amber-200 overflow-hidden flex flex-col max-h-[85vh]"
           >
             {/* Header */}
             <div className="px-6 py-5 border-b border-amber-900/10 flex justify-between items-center bg-gradient-to-r from-amber-100/50 to-white/50">
@@ -179,13 +179,17 @@ export function CreateScenarioModal({
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto">
               <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-4 text-sm">
                 <p className="font-serif font-semibold text-amber-900 mb-2">Example Prompts:</p>
                 <ul className="space-y-1 text-amber-800/90 text-xs">
                   <li className="italic">• "A frozen valley where rebels defend trenches against armored walkers"</li>
                   <li className="italic">• "Ancient Greek ships clash in a narrow strait during a storm"</li>
                   <li className="italic">• "Urban warfare in a ruined city with snipers and armored units"</li>
+                  <li className="italic">• "Steam-powered mechs defending a Victorian london bridge against sea monsters"</li>
+                  <li className="italic">• "Samurai archers holding a mountain pass against a modern tank battalion"</li>
+                  <li className="italic">• "Prehistoric dinosaur riders clashing with alien invaders in a jungle"</li>
+                  <li className="italic">• "Battle for a resource silo on Mars during a dust storm"</li>
                 </ul>
               </div>
 
