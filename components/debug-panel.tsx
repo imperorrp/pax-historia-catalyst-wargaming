@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown, ChevronRight, X, Terminal, GripVertical, Settings, Database, MessageSquare, CheckCircle2, AlertTriangle, Loader2, AlertCircle, Clock, BrainCircuit, FileJson, Copy } from "lucide-react"
 import type { WarRoomScenario, CatalystOption } from "@/lib/types"
 import { useAIStore } from "@/lib/ai/store"
+import { useTargetingStore } from "@/lib/targeting-store"
 import { ScenarioGenerationSchema, TurnResolutionSchema } from "@/lib/ai/schemas"
 import { buildTurnPrompt } from "@/lib/ai/prompt-builder"
 import { 
@@ -38,10 +39,13 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
     history, clearHistory
   } = useAIStore()
   
-  const [activeTab, setActiveTab] = useState<Tab>('telemetry')
+  const [activeTab, setActiveTab] = useState<Tab>('config')
   const [promptEngineTab, setPromptEngineTab] = useState<'scenario' | 'turn'>('scenario')
   const [knowledgeTab, setKnowledgeTab] = useState('visual')
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+
+  // Get current round from store
+  const currentRound = useTargetingStore(s => s.currentRound)
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     aiTelemetry: true,
@@ -203,8 +207,9 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
 
       {/* Navigation Tabs */}
       <div className="flex border-b border-cyan-900/50AI  bg-[#020810]">
-        <TabButton id="telemetry" icon={Terminal} label="Telemetry" active={activeTab} onClick={setActiveTab} />
+        {/* MOVED CONFIG TO FIRST */}
         <TabButton id="config" icon={Settings} label="Config" active={activeTab} onClick={setActiveTab} />
+        <TabButton id="telemetry" icon={Terminal} label="Telemetry" active={activeTab} onClick={setActiveTab} />
         <TabButton id="prompt" icon={MessageSquare} label="Prompt" active={activeTab} onClick={setActiveTab} />
         <TabButton id="data" icon={Database} label="Data" active={activeTab} onClick={setActiveTab} />
       </div>
@@ -577,15 +582,41 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
             </div>
         )}
 
-        {/* DATA TAB (Original Debug Content) */}
+        {/* DATA TAB */}
         {activeTab === 'data' && (
-          <div className="p-0">
-             <DebugPanelContent 
+          <div className="flex flex-col h-full">
+
+            {/* NEW: Raw JSON Viewer Section */}
+            <div className="p-4 border-b border-cyan-900/50 bg-[#020810] flex-shrink-0">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-cyan-100 uppercase flex items-center gap-2">
+                  <FileJson className="w-3.5 h-3.5 text-amber-500" />
+                  Snapshot Data <span className="text-cyan-700">|</span> Round {currentRound}
+                </h4>
+                <button
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(scenario, null, 2))}
+                  className="p-1.5 hover:bg-cyan-900/30 rounded text-cyan-500 hover:text-cyan-200 transition-colors"
+                  title="Copy Raw JSON"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded border border-cyan-900/30 bg-[#050a10] p-3 shadow-inner custom-scrollbar">
+                <pre className="text-[9px] font-mono text-cyan-300/70 whitespace-pre-wrap break-all">
+                  {JSON.stringify(scenario, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            {/* Existing Formatted View */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <DebugPanelContent
                 scenario={scenario}
                 selectedTactic={selectedTactic}
                 expandedSections={expandedSections}
                 toggleSection={toggleSection}
               />
+            </div>
           </div>
         )}
 

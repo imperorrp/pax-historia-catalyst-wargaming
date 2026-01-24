@@ -426,7 +426,7 @@ export function WarRoomLayout() {
 
         {/* DESKTOP LAYOUT: Original 3-column grid */}
         {/* Left Sidebar - Dispatch Log (collapsible) */}
-        <div className="lg:col-span-2 h-full min-h-0">
+        <div className="lg:col-span-3 h-full min-h-0">
           <DispatchLog
             isExpanded={isLogExpanded}
             onToggle={() => setIsLogExpanded(!isLogExpanded)}
@@ -440,7 +440,7 @@ export function WarRoomLayout() {
         </div>
 
         {/* Center - Map (PRIMARY FOCAL POINT - LARGE) */}
-        <div className="hidden lg:flex lg:col-span-8 flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
+        <div className="hidden lg:flex lg:col-span-7 flex-col h-full min-h-0 overflow-hidden order-first lg:order-none">
           <div className="flex-1 bg-amber-50 rounded-lg border border-amber-900/15 shadow-lg relative group min-h-[300px] lg:min-h-0">
             <WarRoomMap scenario={currentScenario} />
 

@@ -233,31 +233,42 @@ export function drawFORTIFY({ ctx, from, opacity = 1 }: DrawingContext) {
   ctx.lineWidth = 3
 
   // Sawtooth fortification line in front of unit
-  const toothWidth = 15
-  const toothHeight = 15
-  const teethCount = 6
+  const toothWidth = 8
+  const toothHeight = 8
+  const teethCount = 5
 
   ctx.beginPath()
-  ctx.moveTo(from.x - (teethCount * toothWidth) / 2, from.y - 30)
+  ctx.moveTo(from.x - (teethCount * toothWidth) / 2, from.y + 10)
 
   for (let i = 0; i < teethCount; i++) {
     const x = from.x - (teethCount * toothWidth) / 2 + i * toothWidth
-    ctx.lineTo(x + toothWidth / 2, from.y - 30 - toothHeight)
-    ctx.lineTo(x + toothWidth, from.y - 30)
+    ctx.lineTo(x + toothWidth / 2, from.y + 10 - toothHeight)
+    ctx.lineTo(x + toothWidth, from.y + 10)
   }
 
   ctx.stroke()
   ctx.globalAlpha = 1
 }
 
-export function drawHOLD({ ctx, opacity = 1 }: DrawingContext) {
+export function drawHOLD({ ctx, from, opacity = 1 }: DrawingContext) {
   ctx.globalAlpha = opacity
   ctx.strokeStyle = "#3498db"
   ctx.lineWidth = 3
 
-  // Diamond around unit position
-  const size = 25
-  // Diamond is already implicitly in the unit counter rendering
+  // Circular barrier around unit position
+  const radius = 18
+  ctx.beginPath()
+  ctx.arc(from.x, from.y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Cross in center to indicate hold
+  ctx.beginPath()
+  ctx.moveTo(from.x - 8, from.y)
+  ctx.lineTo(from.x + 8, from.y)
+  ctx.moveTo(from.x, from.y - 8)
+  ctx.lineTo(from.x, from.y + 8)
+  ctx.stroke()
+
   ctx.globalAlpha = 1
 }
 
@@ -1010,5 +1021,126 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
   }
 
   console.warn(`[renderVisualAction] No renderer for action: ${action}`)
+  return false
+}
+
+// --- VISUAL EFFECTS RENDERERS ---
+
+export interface VisualEffectContext {
+  ctx: CanvasRenderingContext2D
+  location: { x: number; y: number }
+  opacity?: number
+}
+
+export function drawDUST({ ctx, location, opacity = 1 }: VisualEffectContext) {
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = "rgba(210, 180, 140, 0.4)"
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const r = 30 + Math.random() * 20
+    ctx.beginPath()
+    ctx.arc(location.x + r * Math.cos(angle), location.y + r * Math.sin(angle), 8 + Math.random() * 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
+export function drawEXPLOSION({ ctx, location, opacity = 1 }: VisualEffectContext) {
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "rgba(255, 100, 0, 0.8)"
+  ctx.fillStyle = "rgba(255, 200, 0, 0.6)"
+  ctx.lineWidth = 3
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2
+    const r = 20 + Math.random() * 15
+    ctx.beginPath()
+    ctx.moveTo(location.x, location.y)
+    ctx.lineTo(location.x + r * Math.cos(angle), location.y + r * Math.sin(angle))
+    ctx.stroke()
+  }
+  ctx.beginPath()
+  ctx.arc(location.x, location.y, 15, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalAlpha = 1
+}
+
+export function drawSMOKE({ ctx, location, opacity = 1 }: VisualEffectContext) {
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = "rgba(80, 80, 80, 0.5)"
+  for (let i = 0; i < 6; i++) {
+    const offsetX = (Math.random() - 0.5) * 40
+    const offsetY = (Math.random() - 0.5) * 40
+    ctx.beginPath()
+    ctx.arc(location.x + offsetX, location.y + offsetY, 12 + Math.random() * 8, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
+export function drawFIRE({ ctx, location, opacity = 1 }: VisualEffectContext) {
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = "rgba(255, 80, 0, 0.8)"
+  ctx.strokeStyle = "rgba(255, 200, 0, 0.9)"
+  ctx.lineWidth = 1.5
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const r = 8 + Math.random() * 5
+    const flameHeight = 10 + Math.random() * 8
+    ctx.beginPath()
+    ctx.moveTo(location.x + r * Math.cos(angle), location.y + r * Math.sin(angle))
+    ctx.lineTo(location.x + r * Math.cos(angle), location.y + r * Math.sin(angle) - flameHeight)
+    ctx.stroke()
+  }
+  ctx.beginPath()
+  ctx.arc(location.x, location.y, 10, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalAlpha = 1
+}
+
+export function drawIMPACT({ ctx, location, opacity = 1 }: VisualEffectContext) {
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = "rgba(255, 0, 0, 0.8)"
+  ctx.lineWidth = 3
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2 + Math.PI / 4
+    const len = 18
+    ctx.beginPath()
+    ctx.moveTo(location.x - len * Math.cos(angle) / 2, location.y - len * Math.sin(angle) / 2)
+    ctx.lineTo(location.x + len * Math.cos(angle) / 2, location.y + len * Math.sin(angle) / 2)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+}
+
+export function drawMUD_SPLAT({ ctx, location, opacity = 1 }: VisualEffectContext) {
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = "rgba(101, 67, 33, 0.6)"
+  for (let i = 0; i < 10; i++) {
+    const offsetX = (Math.random() - 0.5) * 50
+    const offsetY = (Math.random() - 0.5) * 50
+    ctx.beginPath()
+    ctx.arc(location.x + offsetX, location.y + offsetY, 5 + Math.random() * 5, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
+export function renderVisualEffect(effectType: string, context: VisualEffectContext): boolean {
+  const renderers: Record<string, (ctx: VisualEffectContext) => void> = {
+    DUST: drawDUST,
+    EXPLOSION: drawEXPLOSION,
+    SMOKE: drawSMOKE,
+    FIRE: drawFIRE,
+    IMPACT: drawIMPACT,
+    MUD_SPLAT: drawMUD_SPLAT,
+  }
+
+  const renderer = renderers[effectType]
+  if (renderer) {
+    renderer(context)
+    return true
+  }
+
+  console.warn(`[renderVisualEffect] No renderer for effect: ${effectType}`)
   return false
 }

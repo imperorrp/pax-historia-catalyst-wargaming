@@ -5,7 +5,7 @@ import { useTargetingStore } from "@/lib/targeting-store"
 import type { WarRoomScenario, HexData } from "@/lib/types"
 import { UnitCounter } from "./unit-counter"
 
-import { renderVisualAction, drawUnitStatus, drawThreatZone } from "@/lib/visual-action-library"
+import { renderVisualAction, renderVisualEffect, drawUnitStatus, drawThreatZone } from "@/lib/visual-action-library"
 import { hydrateScenarioLayout } from "@/lib/grid-engine/layout-solver"
 import { getHexCorners, hexToPixel } from "@/lib/grid-engine/hex-math"
 import { Grid3X3 } from "lucide-react"
@@ -707,90 +707,11 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         }
         
         // Render effect based on type
-        ctx.save();
-        switch (fx.type) {
-          case "DUST":
-            ctx.fillStyle = "rgba(210, 180, 140, 0.4)";
-            for (let i = 0; i < 8; i++) {
-              const angle = (i / 8) * Math.PI * 2;
-              const r = 30 + Math.random() * 20;
-              ctx.beginPath();
-              ctx.arc(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle), 8 + Math.random() * 4, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            break;
-            
-          case "EXPLOSION":
-            ctx.strokeStyle = "rgba(255, 100, 0, 0.8)";
-            ctx.fillStyle = "rgba(255, 200, 0, 0.6)";
-            ctx.lineWidth = 3;
-            for (let i = 0; i < 12; i++) {
-              const angle = (i / 12) * Math.PI * 2;
-              const r = 20 + Math.random() * 15;
-              ctx.beginPath();
-              ctx.moveTo(fxLoc.x, fxLoc.y);
-              ctx.lineTo(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle));
-              ctx.stroke();
-            }
-            ctx.beginPath();
-            ctx.arc(fxLoc.x, fxLoc.y, 15, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-            
-          case "SMOKE":
-            ctx.fillStyle = "rgba(80, 80, 80, 0.5)";
-            for (let i = 0; i < 6; i++) {
-              const offsetX = (Math.random() - 0.5) * 40;
-              const offsetY = (Math.random() - 0.5) * 40;
-              ctx.beginPath();
-              ctx.arc(fxLoc.x + offsetX, fxLoc.y + offsetY, 12 + Math.random() * 8, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            break;
-            
-          case "FIRE":
-            ctx.fillStyle = "rgba(255, 80, 0, 0.7)";
-            ctx.strokeStyle = "rgba(255, 200, 0, 0.9)";
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 8; i++) {
-              const angle = (i / 8) * Math.PI * 2;
-              const r = 15 + Math.random() * 10;
-              const flameHeight = 20 + Math.random() * 15;
-              ctx.beginPath();
-              ctx.moveTo(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle));
-              ctx.lineTo(fxLoc.x + r * Math.cos(angle), fxLoc.y + r * Math.sin(angle) - flameHeight);
-              ctx.stroke();
-            }
-            ctx.beginPath();
-            ctx.arc(fxLoc.x, fxLoc.y, 18, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-            
-          case "IMPACT":
-            ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
-            ctx.lineWidth = 4;
-            for (let i = 0; i < 4; i++) {
-              const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
-              const len = 25;
-              ctx.beginPath();
-              ctx.moveTo(fxLoc.x - len * Math.cos(angle) / 2, fxLoc.y - len * Math.sin(angle) / 2);
-              ctx.lineTo(fxLoc.x + len * Math.cos(angle) / 2, fxLoc.y + len * Math.sin(angle) / 2);
-              ctx.stroke();
-            }
-            break;
-            
-          case "MUD_SPLAT":
-            ctx.fillStyle = "rgba(101, 67, 33, 0.6)";
-            for (let i = 0; i < 10; i++) {
-              const offsetX = (Math.random() - 0.5) * 50;
-              const offsetY = (Math.random() - 0.5) * 50;
-              ctx.beginPath();
-              ctx.arc(fxLoc.x + offsetX, fxLoc.y + offsetY, 5 + Math.random() * 5, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            break;
-        }
-        ctx.restore();
+        renderVisualEffect(fx.type, {
+          ctx,
+          location: fxLoc,
+          opacity: 0.9,
+        });
       });
     }
 
@@ -1101,90 +1022,160 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <LegendItem 
                   title="ADVANCE" 
-                  color="#2c3e50" 
-                  description="Straight arrow - Forward movement of forces"
+                  action="ADVANCE" 
+                  description="Straight arrow - Forward movement"
                 />
                 <LegendItem 
                   title="ASSAULT" 
-                  color="#c0392b" 
-                  description="Thick arrow with limit bar - Direct attack"
+                  action="ASSAULT" 
+                  description="Thick arrow with bar - Direct attack"
                 />
                 <LegendItem 
-                  title="FLANK LEFT/RIGHT" 
-                  color="#f39c12" 
-                  description="Curved arrow - Flanking maneuver"
+                  title="FLANK LEFT" 
+                  action="FLANK_LEFT" 
+                  description="Curved arrow - Left flanking"
+                />
+                <LegendItem 
+                  title="FLANK RIGHT" 
+                  action="FLANK_RIGHT" 
+                  description="Curved arrow - Right flanking"
                 />
                 <LegendItem 
                   title="ENCIRCLE" 
-                  color="#8e44ad" 
-                  description="Dual curved arrows - Surround enemy"
+                  action="ENCIRCLE" 
+                  description="Dual curved arrows - Surround"
                 />
                 <LegendItem 
                   title="BOMBARD" 
-                  color="#e74c3c" 
-                  description="Starburst pattern - Artillery bombardment"
+                  action="BOMBARD" 
+                  description="Starburst - Artillery fire"
                 />
                 <LegendItem 
                   title="SUPPRESS" 
-                  color="rgba(231, 76, 60, 0.6)" 
+                  action="SUPPRESS" 
                   description="Cone of dots - Suppressive fire"
                 />
                 <LegendItem 
                   title="FORTIFY" 
-                  color="#34495e" 
+                  action="FORTIFY" 
                   description="Sawtooth line - Defensive positions"
                 />
                 <LegendItem 
                   title="RETREAT" 
-                  color="#95a5a6" 
-                  description="Dashed arrow - Tactical withdrawal"
+                  action="RETREAT" 
+                  description="Dashed arrow - Withdrawal"
                 />
                 <LegendItem 
                   title="INFILTRATE" 
-                  color="#27ae60" 
-                  description="Serpentine line - Stealth movement"
+                  action="INFILTRATE" 
+                  description="Serpentine - Stealth movement"
                 />
                 <LegendItem 
                   title="AMBUSH" 
-                  color="#16a085" 
+                  action="AMBUSH" 
                   description="Question mark - Hidden forces"
                 />
                 <LegendItem 
                   title="SPEARHEAD" 
-                  color="#2c3e50" 
-                  description="Bold arrow - Concentrated breakthrough"
+                  action="SPEARHEAD" 
+                  description="Bold arrow - Breakthrough"
                 />
                 <LegendItem 
                   title="FEINT" 
-                  color="#95a5a6" 
-                  description="Phantom arrow - Deceptive maneuver"
+                  action="FEINT" 
+                  description="Phantom arrow - Deception"
+                />
+                <LegendItem 
+                  title="PROBE" 
+                  action="RECON" 
+                  description="Dotted arrow - Reconnaissance"
+                />
+                <LegendItem 
+                  title="CHARGE" 
+                  action="TRAMPLE" 
+                  description="Triple arrows - Cavalry charge"
+                />
+                <LegendItem 
+                  title="HOLD" 
+                  action="HOLD" 
+                  description="Circle barrier - Hold position"
+                />
+                <LegendItem 
+                  title="AIRSTRIKE" 
+                  action="AIRSTRIKE" 
+                  description="Aircraft icon - Air bombardment"
+                />
+                <LegendItem 
+                  title="COMBINED ASSAULT" 
+                  action="COMBINED_ASSAULT" 
+                  description="Multiple arrows - Coordinated attack"
+                />
+                <LegendItem 
+                  title="HACK" 
+                  action="HACK" 
+                  description="Circuit pattern - Cyber warfare"
+                />
+                <LegendItem 
+                  title="NAVAL RAM" 
+                  action="NAVAL_RAM" 
+                  description="Ship ramming - Naval combat"
+                />
+                <LegendItem 
+                  title="FIRE SHIP" 
+                  action="FIRE_SHIP" 
+                  description="Burning ship - Incendiary naval attack"
+                />
+                <LegendItem 
+                  title="RAIN ARROWS" 
+                  action="RAIN_ARROWS" 
+                  description="Arrow shower - Mass archery"
+                />
+                <LegendItem 
+                  title="BROADSIDES" 
+                  action="BROADSIDES" 
+                  description="Cannon barrage - Ship gunfire"
+                />
+                <LegendItem 
+                  title="RAKING FIRE" 
+                  action="RAKING_FIRE" 
+                  description="Lengthwise cannonade - Naval tactic"
+                />
+                <LegendItem 
+                  title="BOARDING" 
+                  action="BOARDING" 
+                  description="Grappling hooks - Ship boarding"
+                />
+                <LegendItem 
+                  title="MANEUVER" 
+                  action="MANEUVER" 
+                  description="Curved path - Tactical movement"
+                />
+                <LegendItem 
+                  title="LINE OF BATTLE" 
+                  action="LINE_OF_BATTLE" 
+                  description="Ship formation - Naval formation"
                 />
               </div>
               
               <div className="mt-6 pt-4 border-t border-amber-900/20">
-                <h3 className="font-serif font-bold text-amber-900 mb-3">Unit Status Rings</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <StatusLegendItem color="#27ae60" label="Fresh" description="Solid ring" />
-                  <StatusLegendItem color="#e67e22" label="Engaged" description="Short dashes" />
-                  <StatusLegendItem color="#e74c3c" label="Wavering" description="Long dashes" />
-                  <StatusLegendItem color="#95a5a6" label="Routing" description="Faded blur" />
+                <h3 className="font-serif font-bold text-amber-900 mb-3">Visual Effects</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <VisualEffectLegendItem type="DUST" description="Troop movement dust clouds" />
+                  <VisualEffectLegendItem type="EXPLOSION" description="Artillery impact burst" />
+                  <VisualEffectLegendItem type="SMOKE" description="Battlefield smoke" />
+                  <VisualEffectLegendItem type="FIRE" description="Burning structures" />
+                  <VisualEffectLegendItem type="IMPACT" description="Direct hit marker" />
+                  <VisualEffectLegendItem type="MUD_SPLAT" description="Muddy terrain effect" />
                 </div>
-
-                {/* Dev: Debug Actions Button & Report */}
-                <div className="mt-4">
-                  <button className="px-3 py-2 bg-amber-900 text-white rounded" onClick={() => analyzeActions()}>
-                    Debug Actions
-                  </button>
-                  {debugReport && debugReport.length > 0 && (
-                    <div className="mt-3 p-2 bg-white/80 rounded border">
-                      <div className="font-bold text-sm mb-2">Debug Report (first 10 issues)</div>
-                      <ul className="text-xs list-disc pl-4" style={{ maxHeight: 180, overflow: 'auto' }}>
-                        {debugReport.slice(0,10).map((r, i) => (
-                          <li key={i}><strong>{r.severity}:</strong> {r.message}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-amber-900/20">
+                <h3 className="font-serif font-bold text-amber-900 mb-3">Unit Status Indicators</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatusLegendItem color="#27ae60" label="Fresh" description="Solid ring" status="fresh" />
+                  <StatusLegendItem color="#e67e22" label="Engaged" description="Short dashes" status="engaged" />
+                  <StatusLegendItem color="#e74c3c" label="Wavering" description="Long dashes" status="wavering" />
+                  <StatusLegendItem color="#95a5a6" label="Routing" description="Faded blur" status="routing" />
                 </div>
               </div>
             </div>
@@ -1216,24 +1207,106 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   }
 }
 
-function LegendItem({ title, color, description }: { title: string; color: string; description: string }) {
+function LegendItem({ title, action, description }: { title: string; action: string; description: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw action visualization
+    const from = { x: 20, y: 35 };
+    const to = { x: 80, y: 35 };
+    
+    renderVisualAction(action as any, {
+      ctx,
+      from,
+      to,
+      opacity: 0.9,
+    });
+  }, [action]);
+
   return (
     <div className="p-3 bg-white/50 rounded-lg border border-amber-900/10">
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-6 h-6 rounded" style={{ backgroundColor: color, opacity: 0.7 }} />
-        <span className="font-serif font-bold text-sm text-amber-900">{title}</span>
+      <div className="flex items-center gap-3 mb-1">
+        <canvas 
+          ref={canvasRef} 
+          width={100} 
+          height={70}
+          className="border border-amber-900/20 rounded bg-amber-50/30"
+        />
+        <div className="flex-1">
+          <span className="font-serif font-bold text-sm text-amber-900 block mb-1">{title}</span>
+          <p className="text-xs text-amber-800/70 font-serif">{description}</p>
+        </div>
       </div>
-      <p className="text-xs text-amber-800/70 font-serif">{description}</p>
     </div>
   )
 }
 
-function StatusLegendItem({ color, label, description }: { color: string; label: string; description: string }) {
+function StatusLegendItem({ color, label, description, status }: { color: string; label: string; description: string; status?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !status) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawUnitStatus(ctx, { x: 35, y: 35 }, status as any, 28);
+  }, [status]);
+
   return (
-    <div className="text-center">
-      <div className="w-10 h-10 rounded-full mx-auto mb-1 border-2" style={{ borderColor: color }} />
+    <div className="text-center p-2 bg-white/40 rounded-lg border border-amber-900/10">
+      <canvas 
+        ref={canvasRef} 
+        width={70} 
+        height={70}
+        className="mx-auto mb-2 border border-amber-900/20 rounded bg-amber-50/30"
+      />
       <div className="font-serif font-bold text-xs text-amber-900">{label}</div>
       <div className="text-xs text-amber-800/60">{description}</div>
+    </div>
+  )
+}
+
+function VisualEffectLegendItem({ type, description }: { type: string; description: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Draw effect visualization
+    const centerLoc = { x: 50, y: 35 };
+    
+    renderVisualEffect(type, {
+      ctx,
+      location: centerLoc,
+      opacity: 0.9,
+    });
+  }, [type]);
+
+  return (
+    <div className="p-2 bg-white/40 rounded-lg border border-amber-900/10">
+      <canvas 
+        ref={canvasRef} 
+        width={100} 
+        height={70}
+        className="mx-auto mb-2 border border-amber-900/20 rounded bg-amber-50/30"
+      />
+      <div className="text-center">
+        <div className="font-serif font-bold text-xs text-amber-900 mb-1">{type}</div>
+        <p className="text-xs text-amber-800/60 font-serif">{description}</p>
+      </div>
     </div>
   )
 }
