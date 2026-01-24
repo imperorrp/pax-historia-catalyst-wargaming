@@ -586,26 +586,17 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
         {activeTab === 'data' && (
           <div className="flex flex-col h-full">
 
-            {/* NEW: Raw JSON Viewer Section */}
+            {/* NEW: Raw JSON Viewer Section with Tabs */}
             <div className="p-4 border-b border-cyan-900/50 bg-[#020810] flex-shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-bold text-cyan-100 uppercase flex items-center gap-2">
                   <FileJson className="w-3.5 h-3.5 text-amber-500" />
                   Snapshot Data <span className="text-cyan-700">|</span> Round {currentRound}
                 </h4>
-                <button
-                  onClick={() => navigator.clipboard.writeText(JSON.stringify(scenario, null, 2))}
-                  className="p-1.5 hover:bg-cyan-900/30 rounded text-cyan-500 hover:text-cyan-200 transition-colors"
-                  title="Copy Raw JSON"
-                >
-                  <Copy className="w-3 h-3" />
-                </button>
               </div>
-              <div className="max-h-48 overflow-y-auto rounded border border-cyan-900/30 bg-[#050a10] p-3 shadow-inner custom-scrollbar">
-                <pre className="text-[9px] font-mono text-cyan-300/70 whitespace-pre-wrap break-all">
-                  {JSON.stringify(scenario, null, 2)}
-                </pre>
-              </div>
+              
+              {/* Tabs for Raw vs Processed */}
+              <SnapshotDataTabs scenario={scenario} />
             </div>
 
             {/* Existing Formatted View */}
@@ -1028,4 +1019,78 @@ function InfoRow({ label, value, compact = false }: { label: string; value: stri
       <span className="text-cyan-200 break-all">{value}</span>
     </div>
   )
+}
+
+function SnapshotDataTabs({ scenario }: { scenario: WarRoomScenario }) {
+  const [activeTab, setActiveTab] = useState<'raw' | 'processed'>('raw');
+  const [copied, setCopied] = useState(false);
+
+  // Raw scenario: Strip out the hydrated fields (hexGrid, hexIndex, mapRegions with exact points)
+  const rawScenario = {
+    ...scenario,
+    hexGrid: undefined,
+    hexIndex: undefined,
+    mapRegions: scenario.layoutDefs ? undefined : scenario.mapRegions?.map(r => ({
+      id: r.id,
+      name: r.name,
+      terrain: r.terrain,
+      isFort: r.isFort,
+      isCity: r.isCity,
+      // Omit: points, neighbors, centroid, subPolygons (these are generated)
+    }))
+  };
+
+  const currentData = activeTab === 'raw' ? rawScenario : scenario;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(currentData, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (e) {
+      console.error('Copy failed', e);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Tab Buttons */}
+      <div className="flex gap-2 border-b border-cyan-900/30">
+        <button
+          onClick={() => setActiveTab('raw')}
+          className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${
+            activeTab === 'raw'
+              ? 'border-amber-500 text-amber-400 bg-amber-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          Raw (Source)
+        </button>
+        <button
+          onClick={() => setActiveTab('processed')}
+          className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${
+            activeTab === 'processed'
+              ? 'border-cyan-500 text-cyan-400 bg-cyan-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          Processed (Engine)
+        </button>
+        <button
+          onClick={handleCopy}
+          className="ml-auto p-1.5 hover:bg-cyan-900/30 rounded text-cyan-500 hover:text-cyan-200 transition-colors"
+          title={`Copy ${activeTab === 'raw' ? 'Raw' : 'Processed'} JSON`}
+        >
+          {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+        </button>
+      </div>
+
+      {/* JSON Display */}
+      <div className="max-h-48 overflow-y-auto rounded border border-cyan-900/30 bg-[#050a10] p-3 shadow-inner custom-scrollbar">
+        <pre className="text-[9px] font-mono text-cyan-300/70 whitespace-pre-wrap break-all">
+          {JSON.stringify(currentData, null, 2)}
+        </pre>
+      </div>
+    </div>
+  );
 }

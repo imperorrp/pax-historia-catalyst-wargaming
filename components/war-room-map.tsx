@@ -356,39 +356,81 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         let roughness = 1;
         let bowing = 1;
 
+        // 1. Detect Scale Type
+        const isStrategic = scenario.scaleType === 'grand_strategy';
+
+        // 2. STRATEGIC VISUAL OVERRIDES
+        if (isStrategic) {
+          roughness = 0; // Clean lines, no sketchiness
+          bowing = 0;    // Straight geometry
+          fillStyle = "solid"; // Atlas style maps are solid blocks of color
+          strokeWidth = 1; 
+          
+          // Color Coding by "Political Ownership" logic
+          // (Simplified logic: if player unit inside -> Blueish, Enemy -> Reddish, Else -> Grey)
+          // In a real app, 'owner' would be on the region-state object.
+          const hasPlayer = scenario.units.some(u => u.owner === 'player' && u.placement?.regionId === region.id);
+          const hasEnemy = scenario.units.some(u => u.owner === 'enemy' && u.placement?.regionId === region.id);
+
+          if (region.terrain === 'ocean') {
+               fill = "#a5c9e1"; // Map Blue
+               stroke = "#8fb0c6";
+          } else if (hasPlayer) {
+               fill = "rgba(52, 152, 219, 0.2)"; // Friendly Territory
+               stroke = "#2980b9";
+          } else if (hasEnemy) {
+               fill = "rgba(231, 76, 60, 0.2)"; // Hostile Territory
+               stroke = "#c0392b";
+          } else {
+               fill = "#ecf0f1"; // Neutral/Fog
+               stroke = "#bdc3c7";
+          }
+       }
+
         switch (region.terrain) {
           case 'river':
           case 'water':
           case 'ocean':
             // More distinct Blue, less scratchy
-            fill = isHovered ? "rgba(33, 150, 243, 0.6)" : "rgba(41, 128, 185, 0.35)"; 
-            stroke = "rgba(41, 128, 185, 0.45)"; // Faint blue border
-            fillStyle = "solid"; // Solid water looks better than scratchy zigzag
-            roughness = 0.5; // Smooth water
-            bowing = 0.2;
+            // Only apply if not overridden by strategic mode (though strategic handles ocean above)
+            if (!isStrategic || region.terrain !== 'ocean') {
+                 fill = isHovered ? "rgba(33, 150, 243, 0.6)" : "rgba(41, 128, 185, 0.35)"; 
+                 stroke = "rgba(41, 128, 185, 0.45)"; // Faint blue border
+                 fillStyle = "solid"; // Solid water looks better than scratchy zigzag
+                 roughness = 0.5; // Smooth water
+                 bowing = 0.2;
+            }
             break;
           case 'forest':
-            fill = isHovered ? "rgba(56, 142, 60, 0.35)" : "rgba(56, 142, 60, 0.25)";
-            stroke = "#2e7d32";
-            fillStyle = "cross-hatch";
-            roughness = 1.2;
+            if (!isStrategic) {
+                 fill = isHovered ? "rgba(56, 142, 60, 0.35)" : "rgba(56, 142, 60, 0.25)";
+                 stroke = "#2e7d32";
+                 fillStyle = "cross-hatch";
+                 roughness = 1.2;
+            }
             break;
           case 'mountain':
-            fill = isHovered ? "rgba(117, 117, 117, 0.4)" : "rgba(117, 117, 117, 0.3)";
-            stroke = "#424242";
-            fillStyle = "hachure";
-            roughness = 1.5;
+            if (!isStrategic) {
+                 fill = isHovered ? "rgba(117, 117, 117, 0.4)" : "rgba(117, 117, 117, 0.3)";
+                 stroke = "#424242";
+                 fillStyle = "hachure";
+                 roughness = 1.5;
+            }
             break;
           case 'swamp':
           case 'mud':
-            fill = isHovered ? "rgba(101, 67, 33, 0.45)" : "rgba(78, 52, 46, 0.35)";
-            stroke = "#3e2723";
-            fillStyle = "dots"; // Muddy texture
+            if (!isStrategic) {
+                 fill = isHovered ? "rgba(101, 67, 33, 0.45)" : "rgba(78, 52, 46, 0.35)";
+                 stroke = "#3e2723";
+                 fillStyle = "dots"; // Muddy texture
+            }
             break;
           case 'urban':
-            fill = isHovered ? "rgba(100, 100, 100, 0.35)" : "rgba(100, 100, 100, 0.25)";
-            stroke = "#000";
-            fillStyle = "solid";
+            if (!isStrategic) {
+                 fill = isHovered ? "rgba(100, 100, 100, 0.35)" : "rgba(100, 100, 100, 0.25)";
+                 stroke = "#000";
+                 fillStyle = "solid";
+            }
             break;
         }
 

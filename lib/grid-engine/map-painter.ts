@@ -7,8 +7,25 @@ export function generatePaintedMap(
   layoutDefs: RegionLayoutDef[],
   width: number,
   height: number,
-  numMicroCells: number = 400
+  // Add scaleType parameter (default to tactical)
+  scaleType: 'tactical' | 'grand_strategy' = 'tactical'
 ): MapRegion[] {
+  
+  // 1. DENSITY SWITCH
+  // Tactical = 400 (Smooth, blobbier)
+  // Grand Strategy = Density based on map size, aiming for ~10k for a large map to get pixel-perfect borders
+  
+  let numMicroCells = 400;
+  if (scaleType === 'grand_strategy') {
+      // Calculate roughly 1 cell per 400 sq pixels for high detail
+      // e.g. 2000x1500 = 3,000,000 / 400 = 7500 cells
+      numMicroCells = Math.floor((width * height) / 300);
+      // Cap at 15k to prevent browser crash
+      numMicroCells = Math.min(numMicroCells, 15000);
+      // Min floor
+      numMicroCells = Math.max(numMicroCells, 4000);
+  }
+
   // 1. Generate dense Voronoi Grid (The "Canvas")
   // Using Halton sequence or just random for now. Random is fine for organic feel.
   const points = new Array(numMicroCells).fill(0).map(() => [

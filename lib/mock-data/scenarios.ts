@@ -9,8 +9,10 @@ import { medievalSiege } from "./scenarios/medieval-siege"
 import { redCliffs } from "./scenarios/red-cliffs"
 import { hydaspes } from "./scenarios/hydaspes"
 import { trafalgar } from "./scenarios/trafalgar"
+import { grandStrategyEurope } from "./scenarios/grand-strategy-europe"
 
 export const SCENARIOS: Record<string, WarRoomScenario> = {
+  grand_strategy_europe: grandStrategyEurope,
   ww2_blitzkrieg: blitzkrieg,
   napoleonic_austerlitz: austerlitz,
   medieval_siege: medievalSiege,

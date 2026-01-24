@@ -18,6 +18,9 @@ export function UnitCounter({ unit }: UnitCounterProps) {
   
   const isPlayer = unit.owner === "player"
   
+  // Check scale
+  const isStrategic = currentScenario.scaleType === 'grand_strategy';
+
   // Calculate display position (only used after client mount to avoid SSR mismatch)
   let displayPos = { x: 50, y: 50 };
   let isNearBottom = false;
@@ -146,7 +149,7 @@ export function UnitCounter({ unit }: UnitCounterProps) {
       >
         {/* Unit Size Marker (Top) */}
         <div className="w-full text-[7px] leading-[7px] pt-[1px] text-center font-mono opacity-60 font-bold">
-           XX
+           {isStrategic ? "XXXX" : "XX"}
         </div>
 
         {/* Symbol (Center) */}

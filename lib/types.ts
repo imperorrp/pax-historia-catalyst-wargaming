@@ -211,6 +211,8 @@ export interface Vector {
 export interface WarRoomScenario {
   id: string // Added scenario ID for switcher
   name: string // Added scenario name
+  // NEW: Determines rendering style and generation density
+  scaleType?: 'tactical' | 'grand_strategy'; 
   era: "WW2" | "Napoleonic" | "Ancient" | "Medieval"
   playerPolity: string
   enemyPolity: string
