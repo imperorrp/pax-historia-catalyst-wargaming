@@ -5,9 +5,12 @@ import { useTargetingStore } from "@/lib/targeting-store"
 import type { WarRoomScenario, HexData } from "@/lib/types"
 import { UnitCounter } from "./unit-counter"
 
-import { renderVisualAction, renderVisualEffect, drawUnitStatus, drawThreatZone } from "@/lib/visual-action-library"
-import { hydrateScenarioLayout } from "@/lib/grid-engine/layout-solver"
-import { getHexCorners, hexToPixel } from "@/lib/grid-engine/hex-math"
+import { renderVisualAction, renderVisualEffect, drawUnitStatus } from "@/lib/visual-action-library"
+import { getHexCorners } from "@/lib/grid-engine/hex-math"
+import { getBoundingBox, isPointInPolygon, drawScatterProps, drawRiver, findSharedEdges } from "@/components/map/map-utils"
+import { LegendItem, StatusLegendItem, VisualEffectLegendItem } from "@/components/map/MapLegend"
+import { MapControls } from "@/components/map/MapControls"
+import { MapLegendModal } from "@/components/map/MapLegendModal"
 import { Grid3X3 } from "lucide-react"
 import rough from "roughjs"
 
@@ -15,108 +18,7 @@ interface WarRoomMapProps {
   scenario: WarRoomScenario
 }
 
-// Helper Functions for Scatter Props and Rivers
-function getBoundingBox(points: [number, number][]): { minX: number; maxX: number; minY: number; maxY: number } {
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  points.forEach(([x, y]) => {
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
-  });
-  return { minX, maxX, minY, maxY };
-}
-
-function isPointInPolygon(point: { x: number; y: number }, polygon: [number, number][]): boolean {
-  const { x, y } = point;
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i];
-    const [xj, yj] = polygon[j];
-    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
-
-function drawScatterProps(rc: any, points: [number, number][], terrain: string) {
-  const bounds = getBoundingBox(points);
-  const area = (bounds.maxX - bounds.minX) * (bounds.maxY - bounds.minY);
-  const density = 0.0003; // Adjust based on visual density
-  const count = Math.floor(area * density);
-
-  for (let i = 0; i < count; i++) {
-    const rx = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
-    const ry = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
-
-    // Check if random point is actually inside the region
-    if (isPointInPolygon({ x: rx, y: ry }, points)) {
-      if (terrain === 'forest') {
-        // Draw stylized pine tree
-        rc.line(rx, ry, rx - 3, ry + 8, { stroke: '#2e7d32', strokeWidth: 1 });
-        rc.line(rx, ry, rx + 3, ry + 8, { stroke: '#2e7d32', strokeWidth: 1 });
-        rc.line(rx - 3, ry + 8, rx + 3, ry + 8, { stroke: '#2e7d32', strokeWidth: 1 });
-      } else if (terrain === 'mountain') {
-        // Draw mountain peak
-        rc.path(`M ${rx} ${ry} L ${rx + 8} ${ry - 12} L ${rx + 16} ${ry}`, { stroke: '#5d4037', strokeWidth: 1 });
-      } else if (terrain === 'river' || terrain === 'water') {
-        // Draw water ripples
-        rc.curve([[rx, ry], [rx + 3, ry + 1], [rx + 6, ry]], { stroke: '#2980b9', strokeWidth: 0.5 });
-      } else if (terrain === 'swamp' || terrain === 'mud') {
-        // Draw mud splatters
-        rc.circle(rx, ry, 2 + Math.random() * 3, { fill: '#3e2723', fillStyle: 'solid', roughness: 2 });
-      }
-    }
-  }
-}
-
-function drawRiver(rc: any, regions: any[], river: any) {
-  // Find shared edges between regions in the river path
-  const riverSegments: [number, number][][] = [];
-
-  for (let i = 0; i < river.pathNodes.length - 1; i++) {
-    const regionA = regions.find(r => r.id === river.pathNodes[i]);
-    const regionB = regions.find(r => r.id === river.pathNodes[i + 1]);
-
-    if (regionA && regionB) {
-      // Find shared edges (simplified - in practice you'd need proper edge detection)
-      const sharedEdges = findSharedEdges(regionA.points, regionB.points);
-      if (sharedEdges.length > 0) {
-        riverSegments.push(...sharedEdges);
-      }
-    }
-  }
-
-  // Draw river segments
-  riverSegments.forEach(segment => {
-    if (segment.length >= 2) {
-      rc.path(`M ${segment[0][0]} ${segment[0][1]} L ${segment[1][0]} ${segment[1][1]}`, {
-        stroke: '#2980b9',
-        strokeWidth: river.width || 6,
-        roughness: 1
-      });
-    }
-  });
-}
-
-function findSharedEdges(pointsA: [number, number][], pointsB: [number, number][]): [number, number][][] {
-  // Simplified edge sharing detection - in a full implementation you'd use proper geometric algorithms
-  // For now, return a sample edge for demonstration
-  const boundsA = getBoundingBox(pointsA);
-  const boundsB = getBoundingBox(pointsB);
-
-  // Find approximate shared boundary
-  const sharedX = Math.max(boundsA.minX, boundsB.minX) + (Math.min(boundsA.maxX, boundsB.maxX) - Math.max(boundsA.minX, boundsB.minX)) / 2;
-  const startY = Math.max(boundsA.minY, boundsB.minY);
-  const endY = Math.min(boundsA.maxY, boundsB.maxY);
-
-  if (startY < endY) {
-    return [[[sharedX, startY], [sharedX, endY]]];
-  }
-
-  return [];
-}
+// Map geometry & rendering helpers imported from components/map/map-utils
 
 export function WarRoomMap({ scenario }: WarRoomMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -175,7 +77,8 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
 
             // Resolve target loc using the same logic as render loop
             let targetLoc: {x:number,y:number} | null = null
-            switch(action.targetLogic) {
+            const logic = action.targetLogic ?? tactic.targetLogic
+            switch(logic) {
               case 'center_mass':
                 targetLoc = {
                   x: enemyUnits.reduce((sum, u) => sum + (getUnitPixel(u)?.x || 0), 0) / (enemyUnits.length || 1),
@@ -200,6 +103,9 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
                     issues.push({ severity: 'error', message: `Tactic ${tactic.id} references missing/empty region ${action.targetRegionId}` })
                   }
                 }
+                break;
+              case 'self':
+                targetLoc = fromLoc
                 break;
               case 'nearest':
               default:
@@ -317,6 +223,8 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
       return;
     }
 
+    console.log('[RENDER DEBUG] Starting canvas render. Scenario:', scenario.id, 'hexGrid size:', scenario.hexGrid.length, 'units:', scenario.units.length);
+    console.log('[RENDER DEBUG] Sample unit hex coords:', scenario.units.slice(0, 3).map(u => ({ id: u.id, hex: u.hex })));
 
     const canvas = canvasRef.current
     canvas.width = scenario.mapDimensions.width
@@ -628,9 +536,13 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
     const isHistorical = historyIndex < history.length - 1
     const tacticToDisplay = isHistorical ? history[historyIndex]?.tacticUsed : selectedTactic
 
+    console.log('[RENDER DEBUG] tacticToDisplay:', tacticToDisplay?.id, 'visibleLayers.units:', visibleLayers.units, 'selectedTactic:', selectedTactic?.id);
+
     if (tacticToDisplay && visibleLayers.units) {
       const playerUnits = scenario.units.filter((u) => u.owner === "player")
       const enemyUnits = scenario.units.filter((u) => u.owner === "enemy")
+
+      console.log('[RENDER DEBUG] playerUnits:', playerUnits.length, 'enemyUnits:', enemyUnits.length);
 
       if (playerUnits.length > 0 && enemyUnits.length > 0) {
         
@@ -648,8 +560,12 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
           ? tacticToDisplay.compositeActions 
           : [{ semanticAction: tacticToDisplay.semanticAction, targetLogic: tacticToDisplay.targetLogic, targetRegionId: tacticToDisplay.targetRegionId, requiredUnitTypes: tacticToDisplay.requiredUnitTypes }]
 
+        console.log('[RENDER DEBUG] actionsToRender:', actionsToRender.map(a => ({ action: a.semanticAction, logic: a.targetLogic, unitTypes: a.requiredUnitTypes })));
+
         playerUnits.forEach((playerUnit) => {
           actionsToRender.forEach((action, actionIndex) => {
+            console.log(`[RENDER DEBUG] Processing unit ${playerUnit.id} (${playerUnit.type}) for action ${action.semanticAction}`);
+            
             // Check if this unit type is relevant for the action
             if (action.requiredUnitTypes && !action.requiredUnitTypes.includes(playerUnit.type)) {
                console.warn(`[render] Skip action ${action.semanticAction} for unit ${playerUnit.id} due to unit type mismatch (required: ${action.requiredUnitTypes.join(',')}, unit: ${playerUnit.type})`);
@@ -662,10 +578,19 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
               return;
             }
 
+            console.log(`[RENDER DEBUG] fromLoc for ${playerUnit.id}:`, fromLoc);
+
             let targetLoc = null;
 
             // --- SMART TARGETING LOGIC ---
-            switch(action.targetLogic) {
+            const logic = action.targetLogic ?? tacticToDisplay.targetLogic
+            console.log(`[RENDER DEBUG] Resolved targetLogic for ${action.semanticAction}: ${logic} (action.targetLogic: ${action.targetLogic}, tactic.targetLogic: ${tacticToDisplay.targetLogic})`);
+            
+            switch(logic) {
+              case "self":
+                targetLoc = fromLoc
+                console.log(`[RENDER DEBUG] Set targetLoc to fromLoc (self):`, targetLoc);
+                break;
                case "center_mass":
                   targetLoc = enemyCentroid;
                   break;
@@ -709,12 +634,16 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
               const opacityStep = actionsToRender.length > 1 ? 0.2 / actionsToRender.length : 0;
               const opacity = Math.max(0.3, baseOpacity - (actionIndex * opacityStep));
               
+              console.log(`[RENDER DEBUG] Calling renderVisualAction for ${action.semanticAction} with from:`, fromLoc, 'to:', targetLoc, 'opacity:', opacity);
+              
               const drawn = renderVisualAction(action.semanticAction as any, {
                 ctx,
                 from: fromLoc,
                 to: targetLoc,
                 opacity: opacity,
               });
+
+              console.log(`[RENDER DEBUG] renderVisualAction returned: ${drawn} for ${action.semanticAction}`);
 
               if (!drawn) {
                 console.warn(`[render] Action ${action.semanticAction} not drawn (no renderer) for unit ${playerUnit.id} -> target ${action.targetLogic}${action.targetRegionId ? ' '+action.targetRegionId : ''}`);
@@ -1041,207 +970,16 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
         </div>
         
         {/* Zoom Controls */}
-        <div className="absolute top-16 right-4 flex flex-col gap-2 bg-white/80 backdrop-blur rounded-lg shadow border border-stone-200 p-1 z-20">
-          <button 
-            onClick={() => setTransform(p => ({...p, scale: Math.min(4, p.scale + 0.2)}))}
-            className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold"
-          >+</button>
-          <div className="text-xs text-center text-stone-400 font-mono">{Math.round(transform.scale * 100)}%</div>
-          <button 
-            onClick={() => setTransform(p => ({...p, scale: Math.max(0.25, p.scale - 0.2)}))}
-            className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold"
-          >-</button>
-          <button 
-             onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
-             className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 rounded text-stone-700 font-bold text-xs"
-             title="Reset View"
-          >R</button>
-        </div>
+        <MapControls
+          onZoomIn={() => setTransform(p => ({...p, scale: Math.min(4, p.scale + 0.2)}))}
+          onZoomOut={() => setTransform(p => ({...p, scale: Math.max(0.25, p.scale - 0.2)}))}
+          onResetView={() => setTransform({ x: 0, y: 0, scale: 1 })}
+          scale={transform.scale}
+        />
       </div>
 
       {/* Visual Action Legend Modal */}
-      {showLegend && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowLegend(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-amber-50 rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-y-auto border border-amber-900/20 backdrop-blur-sm"
-          >
-            <div className="p-6">
-              <h2 className="text-2xl font-serif font-bold text-amber-900 mb-4">Visual Action Legend</h2>
-              <p className="text-amber-800/80 text-sm mb-6 font-serif">
-                Tactical arrows and symbols show the nature of military operations when you select a strategy.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <LegendItem 
-                  title="ADVANCE" 
-                  action="ADVANCE" 
-                  description="Straight arrow - Forward movement"
-                />
-                <LegendItem 
-                  title="ASSAULT" 
-                  action="ASSAULT" 
-                  description="Thick arrow with bar - Direct attack"
-                />
-                <LegendItem 
-                  title="FLANK LEFT" 
-                  action="FLANK_LEFT" 
-                  description="Curved arrow - Left flanking"
-                />
-                <LegendItem 
-                  title="FLANK RIGHT" 
-                  action="FLANK_RIGHT" 
-                  description="Curved arrow - Right flanking"
-                />
-                <LegendItem 
-                  title="ENCIRCLE" 
-                  action="ENCIRCLE" 
-                  description="Dual curved arrows - Surround"
-                />
-                <LegendItem 
-                  title="BOMBARD" 
-                  action="BOMBARD" 
-                  description="Starburst - Artillery fire"
-                />
-                <LegendItem 
-                  title="SUPPRESS" 
-                  action="SUPPRESS" 
-                  description="Cone of dots - Suppressive fire"
-                />
-                <LegendItem 
-                  title="FORTIFY" 
-                  action="FORTIFY" 
-                  description="Sawtooth line - Defensive positions"
-                />
-                <LegendItem 
-                  title="RETREAT" 
-                  action="RETREAT" 
-                  description="Dashed arrow - Withdrawal"
-                />
-                <LegendItem 
-                  title="INFILTRATE" 
-                  action="INFILTRATE" 
-                  description="Serpentine - Stealth movement"
-                />
-                <LegendItem 
-                  title="AMBUSH" 
-                  action="AMBUSH" 
-                  description="Question mark - Hidden forces"
-                />
-                <LegendItem 
-                  title="SPEARHEAD" 
-                  action="SPEARHEAD" 
-                  description="Bold arrow - Breakthrough"
-                />
-                <LegendItem 
-                  title="FEINT" 
-                  action="FEINT" 
-                  description="Phantom arrow - Deception"
-                />
-                <LegendItem 
-                  title="PROBE" 
-                  action="RECON" 
-                  description="Dotted arrow - Reconnaissance"
-                />
-                <LegendItem 
-                  title="CHARGE" 
-                  action="TRAMPLE" 
-                  description="Triple arrows - Cavalry charge"
-                />
-                <LegendItem 
-                  title="HOLD" 
-                  action="HOLD" 
-                  description="Circle barrier - Hold position"
-                />
-                <LegendItem 
-                  title="AIRSTRIKE" 
-                  action="AIRSTRIKE" 
-                  description="Aircraft icon - Air bombardment"
-                />
-                <LegendItem 
-                  title="COMBINED ASSAULT" 
-                  action="COMBINED_ASSAULT" 
-                  description="Multiple arrows - Coordinated attack"
-                />
-                <LegendItem 
-                  title="HACK" 
-                  action="HACK" 
-                  description="Circuit pattern - Cyber warfare"
-                />
-                <LegendItem 
-                  title="NAVAL RAM" 
-                  action="NAVAL_RAM" 
-                  description="Ship ramming - Naval combat"
-                />
-                <LegendItem 
-                  title="FIRE SHIP" 
-                  action="FIRE_SHIP" 
-                  description="Burning ship - Incendiary naval attack"
-                />
-                <LegendItem 
-                  title="RAIN ARROWS" 
-                  action="RAIN_ARROWS" 
-                  description="Arrow shower - Mass archery"
-                />
-                <LegendItem 
-                  title="BROADSIDES" 
-                  action="BROADSIDES" 
-                  description="Cannon barrage - Ship gunfire"
-                />
-                <LegendItem 
-                  title="RAKING FIRE" 
-                  action="RAKING_FIRE" 
-                  description="Lengthwise cannonade - Naval tactic"
-                />
-                <LegendItem 
-                  title="BOARDING" 
-                  action="BOARDING" 
-                  description="Grappling hooks - Ship boarding"
-                />
-                <LegendItem 
-                  title="MANEUVER" 
-                  action="MANEUVER" 
-                  description="Curved path - Tactical movement"
-                />
-                <LegendItem 
-                  title="LINE OF BATTLE" 
-                  action="LINE_OF_BATTLE" 
-                  description="Ship formation - Naval formation"
-                />
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-amber-900/20">
-                <h3 className="font-serif font-bold text-amber-900 mb-3">Visual Effects</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <VisualEffectLegendItem type="DUST" description="Troop movement dust clouds" />
-                  <VisualEffectLegendItem type="EXPLOSION" description="Artillery impact burst" />
-                  <VisualEffectLegendItem type="SMOKE" description="Battlefield smoke" />
-                  <VisualEffectLegendItem type="FIRE" description="Burning structures" />
-                  <VisualEffectLegendItem type="IMPACT" description="Direct hit marker" />
-                  <VisualEffectLegendItem type="MUD_SPLAT" description="Muddy terrain effect" />
-                </div>
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-amber-900/20">
-                <h3 className="font-serif font-bold text-amber-900 mb-3">Unit Status Indicators</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <StatusLegendItem color="#27ae60" label="Fresh" description="Solid ring" status="fresh" />
-                  <StatusLegendItem color="#e67e22" label="Engaged" description="Short dashes" status="engaged" />
-                  <StatusLegendItem color="#e74c3c" label="Wavering" description="Long dashes" status="wavering" />
-                  <StatusLegendItem color="#95a5a6" label="Routing" description="Faded blur" status="routing" />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      <MapLegendModal isOpen={showLegend} onClose={() => setShowLegend(false)} />
 
       <div className="absolute inset-0 pointer-events-none z-40 select-none">
         {/* Vignette Shadow */}
@@ -1267,106 +1005,4 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
   }
 }
 
-function LegendItem({ title, action, description }: { title: string; action: string; description: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw action visualization
-    const from = { x: 20, y: 35 };
-    const to = { x: 80, y: 35 };
-    
-    renderVisualAction(action as any, {
-      ctx,
-      from,
-      to,
-      opacity: 0.9,
-    });
-  }, [action]);
-
-  return (
-    <div className="p-3 bg-white/50 rounded-lg border border-amber-900/10">
-      <div className="flex items-center gap-3 mb-1">
-        <canvas 
-          ref={canvasRef} 
-          width={100} 
-          height={70}
-          className="border border-amber-900/20 rounded bg-amber-50/30"
-        />
-        <div className="flex-1">
-          <span className="font-serif font-bold text-sm text-amber-900 block mb-1">{title}</span>
-          <p className="text-xs text-amber-800/70 font-serif">{description}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StatusLegendItem({ color, label, description, status }: { color: string; label: string; description: string; status?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current || !status) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawUnitStatus(ctx, { x: 35, y: 35 }, status as any, 28);
-  }, [status]);
-
-  return (
-    <div className="text-center p-2 bg-white/40 rounded-lg border border-amber-900/10">
-      <canvas 
-        ref={canvasRef} 
-        width={70} 
-        height={70}
-        className="mx-auto mb-2 border border-amber-900/20 rounded bg-amber-50/30"
-      />
-      <div className="font-serif font-bold text-xs text-amber-900">{label}</div>
-      <div className="text-xs text-amber-800/60">{description}</div>
-    </div>
-  )
-}
-
-function VisualEffectLegendItem({ type, description }: { type: string; description: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Draw effect visualization
-    const centerLoc = { x: 50, y: 35 };
-    
-    renderVisualEffect(type, {
-      ctx,
-      location: centerLoc,
-      opacity: 0.9,
-    });
-  }, [type]);
-
-  return (
-    <div className="p-2 bg-white/40 rounded-lg border border-amber-900/10">
-      <canvas 
-        ref={canvasRef} 
-        width={100} 
-        height={70}
-        className="mx-auto mb-2 border border-amber-900/20 rounded bg-amber-50/30"
-      />
-      <div className="text-center">
-        <div className="font-serif font-bold text-xs text-amber-900 mb-1">{type}</div>
-        <p className="text-xs text-amber-800/60 font-serif">{description}</p>
-      </div>
-    </div>
-  )
-}
+// Legend components are imported from components/map/MapLegend

@@ -72,10 +72,10 @@ export async function POST(req: Request) {
         }
 
         // OpenAI: do a single minimal generate to validate key
-        const model = getModel({ provider: provider as any, apiKey, model: provider === 'openai' ? 'gpt-3.5-turbo' : 'gemini-2.0-flash-lite' });
+        const model = getModel({ provider: provider as 'openai' | 'google', apiKey, model: provider === 'openai' ? 'gpt-3.5-turbo' : 'gemini-2.0-flash-lite' });
         // Lightweight call to verify key - use minimal tokens
         const { generateText } = await import('ai');
-        await generateText({ model: model, prompt: 'Hi', maxTokens: 1 });
+        await generateText({ model: model, prompt: 'Hi', maxOutputTokens: 1 });
         return new Response(JSON.stringify({ isValid: true, message: 'Key is valid' }), { status: 200 });
     } catch (e: any) {
         console.error("Validation failed:", e);

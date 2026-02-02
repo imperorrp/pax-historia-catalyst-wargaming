@@ -80,13 +80,13 @@ export function WarRoomLayout() {
     const isMockScenario = Object.values(SCENARIOS).some(s => s.id === currentScenario.id)
     const meta = `Scenario: ${currentScenario.name} | Era: ${currentScenario.era} | Player: ${currentScenario.playerPolity} | Enemy: ${currentScenario.enemyPolity} | Map: ${currentScenario.mapDimensions?.width ?? '?'}x${currentScenario.mapDimensions?.height ?? '?'}`
     setLogs([
-      { text: `Command Center initialized for: ${currentScenario.name}`, round: 0, source: 'system' },
-      { text: meta, round: 0, source: 'system' },
+      { text: `Command Center initialized for: ${currentScenario.name}`, round: 0, source: 'system' as const },
+      { text: meta, round: 0, source: 'system' as const },
       // Inject the Narrative Intro if present. Use 'mock' source for built-in scenarios.
-      ...(currentScenario.options && (currentScenario as any).narrative_intro ? [{
-          text: `Narrative Intro: ${(currentScenario as any).narrative_intro}`,
+      ...(currentScenario.options && (currentScenario as { narrative_intro?: string }).narrative_intro ? [{
+          text: `Narrative Intro: ${(currentScenario as { narrative_intro?: string }).narrative_intro}`,
           round: 0,
-          source: isMockScenario ? 'mock' : 'ai'
+          source: (isMockScenario ? 'mock' : 'ai') as 'mock' | 'ai'
       }] : [])
     ])
   }, [currentScenario.id])

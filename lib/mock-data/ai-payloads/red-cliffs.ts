@@ -1,4 +1,4 @@
-import type { AIGameResponse } from "../../../types"
+import type { AIGameResponse } from "../../types"
 
 export const RED_CLIFFS_PAYLOADS: Record<string, AIGameResponse> = {
   tk_opt_fire: {

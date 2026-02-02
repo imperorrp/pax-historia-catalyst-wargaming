@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown, ChevronRight, X, Terminal, GripVertical, Settings, Database, MessageSquare, CheckCircle2, AlertTriangle, Loader2, AlertCircle, Clock, BrainCircuit, FileJson, Copy } from "lucide-react"
 import type { WarRoomScenario, CatalystOption } from "@/lib/types"
@@ -961,18 +961,33 @@ function DebugSection({
   )
 }
 
-function ZodSchemaViewer({ schema }: { schema: any }) {
+function ZodSchemaViewer({ schema }: { schema: unknown }) {
+  // Define a type for Zod-like schema objects
+  type ZodLike = {
+    _def?: { 
+      typeName?: string; 
+      type?: unknown; 
+      innerType?: unknown; 
+      options?: unknown[];
+      values?: string[];
+    }; 
+    shape?: Record<string, unknown>;
+    element?: unknown;
+    unwrap?: () => unknown;
+  };
+  
   // Recursively print keys to simulate JSON structure
-  const renderSchema = (s: any, depth = 0): JSX.Element => {
-    if (!s || !s._def) return <span className="text-slate-500">unknown</span>;
+  const renderSchema = (s: unknown, depth = 0): React.ReactNode => {
+    const zodSchema = s as ZodLike | null;
+    if (!zodSchema || !zodSchema._def) return <span className="text-slate-500">unknown</span>;
 
     // Handle ZodObject
-    if (s._def.typeName === 'ZodObject') {
-      const shape = s.shape;
+    if (zodSchema._def.typeName === 'ZodObject') {
+      const shape = zodSchema.shape || {};
       return (
         <div className="ml-2">
           <span className="text-slate-500">{'{'}</span>
-          {Object.entries(shape).map(([key, value]: [string, any]) => (
+          {Object.entries(shape).map(([key, value]) => (
             <div key={key} style={{ paddingLeft: `${(depth + 1) * 10}px` }}>
               <span className="text-cyan-200">{key}</span>
               <span className="text-slate-500">: </span>
@@ -985,24 +1000,24 @@ function ZodSchemaViewer({ schema }: { schema: any }) {
     }
 
     // Handle ZodArray
-    if (s._def.typeName === 'ZodArray') {
+    if (zodSchema._def.typeName === 'ZodArray') {
       return (
         <span>
           <span className="text-yellow-500">Array</span>
           <span className="text-slate-500">&lt;</span>
-          {renderSchema(s.element, depth)}
+          {renderSchema(zodSchema.element, depth)}
           <span className="text-slate-500">&gt;</span>
         </span>
       );
     }
 
     // Handle Primitives & Enums
-    if (s._def.typeName === 'ZodEnum') return <span className="text-green-400">Enum({s._def.values.join('|')})</span>;
-    if (s._def.typeName === 'ZodString') return <span className="text-orange-400">String</span>;
-    if (s._def.typeName === 'ZodNumber') return <span className="text-blue-400">Number</span>;
-    if (s._def.typeName === 'ZodOptional') return <span>{renderSchema(s.unwrap(), depth)} <span className="text-slate-600 italic">(opt)</span></span>;
+    if (zodSchema._def.typeName === 'ZodEnum') return <span className="text-green-400">Enum({zodSchema._def.values?.join('|')})</span>;
+    if (zodSchema._def.typeName === 'ZodString') return <span className="text-orange-400">String</span>;
+    if (zodSchema._def.typeName === 'ZodNumber') return <span className="text-blue-400">Number</span>;
+    if (zodSchema._def.typeName === 'ZodOptional' && zodSchema.unwrap) return <span>{renderSchema(zodSchema.unwrap(), depth)} <span className="text-slate-600 italic">(opt)</span></span>;
 
-    return <span className="text-slate-500">{s._def.typeName}</span>;
+    return <span className="text-slate-500">{zodSchema._def.typeName}</span>;
   };
 
   return (

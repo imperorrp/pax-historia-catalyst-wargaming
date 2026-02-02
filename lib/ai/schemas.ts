@@ -33,9 +33,10 @@ const VisualActionSchema = z.object({
       "BOMBARD", "RAIN_ARROWS", "TRAMPLE", "NAVAL_RAM", "FIRE_SHIP", 
       "HACK", "EMP_BLAST", "SUPPRESS", "COMBINED_ASSAULT", 
       "REGION_BOMBARDMENT", "REGION_ENCIRCLEMENT", "GATES_OPEN", "SEVER_SUPPLY",
-      "BROADSIDES", "RAKING_FIRE", "BOARDING", "MANEUVER", "LINE_OF_BATTLE"
+      "BROADSIDES", "RAKING_FIRE", "BOARDING", "MANEUVER", "LINE_OF_BATTLE",
+      "DIVERSION", "VICTORY", "DIPLOMACY", "HOLD", "FEINT", "BLOCKADE", "AIRSTRIKE", "RECON"
   ]),
-  targetLogic: z.enum(["nearest", "center_mass", "flank_left", "flank_right", "rear", "specific_region", "specific_unit"]),
+  targetLogic: z.enum(["nearest", "center_mass", "flank_left", "flank_right", "flank", "rear", "specific_region", "region", "specific_unit", "self", "lowest_health", "weakest", "density", "ally_distress"]),
   targetRegionId: z.string().optional().describe("Required if targetLogic is 'specific_region'"), 
   targetUnitId: z.string().optional().describe("Required if targetLogic is 'specific_unit'"),
   requiredUnitTypes: z.array(z.string()).optional(),

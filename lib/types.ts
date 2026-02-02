@@ -21,7 +21,16 @@ export interface TacticalMesh {
 }
 
 export type AnchorType = 'centroid' | 'border' | 'sector' | 'feature';
-export type PositionTag = 'center' | 'front_line' | 'rear_guard' | 'rear' | 'flank_left' | 'flank_right';
+// Base position tags - can be extended with any string for tactical state descriptions
+export type PositionTag = 
+  | 'center' 
+  | 'front_line' 
+  | 'rear_guard' 
+  | 'rear' 
+  | 'flank_left' 
+  | 'flank_right'
+  // Dynamic state tags (used in mock data and AI responses)
+  | string;
 
 export interface PositionTagIndex {
   [key: string]: number;
@@ -63,6 +72,7 @@ export interface RegionLayoutDef {
   influence: number; // Radius/Width
   points: [number, number][]; // Guide points (1 for blob, multiple for path)
   isFort?: boolean;
+  isCity?: boolean;
 }
 
 export interface SemanticPlacement {
@@ -99,9 +109,16 @@ export type TargetLogic =
   | "center_mass"    // Head to average center of enemy
   | "flank_left"     // Target enemy's rightmost unit (their flank)
   | "flank_right"    // Target enemy's leftmost unit
+  | "flank"          // Generic flank targeting
   | "rear"           // Target enemy furthest back
   | "specific_region" // Target a specific geographic ID
-  | "specific_unit"   // Target a particular unit ID
+  | "region"         // Alias for specific_region
+  | "specific_unit"  // Target a particular unit ID
+  | "self"           // Self-targeting (fortify, hold, retreat)
+  | "lowest_health"  // Target weakest enemy
+  | "weakest"        // Alias for lowest_health
+  | "density"        // Target highest concentration
+  | "ally_distress"  // Target ally in danger
 
 export interface CatalystOption {
   id: string
@@ -176,7 +193,11 @@ export type VisualActionType =
   | "RAKING_FIRE"    // Fire along ship length
   | "BOARDING"       // Close combat boarding action
   | "MANEUVER"      // Tactical ship movement
-  | "LINE_OF_BATTLE"; // Form a parallel line to enemy formation
+  | "LINE_OF_BATTLE" // Form a parallel line to enemy formation
+  // SPECIAL ACTIONS
+  | "DIVERSION"      // Diversionary attack
+  | "VICTORY"        // Victory condition
+  | "DIPLOMACY";     // Diplomatic action
 
 export interface VisualPlan {
   title: string
@@ -252,17 +273,42 @@ export interface HexData {
 }
 
 export interface AIGameResponse {
-  // New Schema Alignment
+  // New Schema Fields (AI SDK will return these)
   thought_chain?: string;
-  narrative_outcome: string; // Was narrative_update
-  unit_updates: UnitUpdate[]; // Was state_changes
-  visual_fx: VisualEffect[];
-  next_tactical_options: CatalystOption[]; // Was next_options
+  narrative_outcome?: string;
+  unit_updates?: UnitUpdate[];
+  visual_fx?: VisualEffect[];
+  next_tactical_options?: CatalystOption[];
   
-  // Deprecated fields (kept optional to safely handle old data if any)
+  // Legacy fields (mock data and backwards compat)
   narrative_update?: string;
   state_changes?: StateChange[];
   next_options?: CatalystOption[];
+}
+
+// Helper to get the narrative from either field
+export function getNarrative(response: AIGameResponse): string {
+  return response.narrative_outcome || response.narrative_update || "";
+}
+
+// Helper to get state changes from either field  
+export function getStateChanges(response: AIGameResponse): StateChange[] {
+  // If unit_updates exists, convert to StateChange format
+  if (response.unit_updates) {
+    return response.unit_updates.map(u => ({
+      unit_id: u.unitId,
+      action: u.status === 'eliminated' ? 'REMOVE' as const : 
+              u.position_update ? 'MOVE' as const : 'UPDATE_STATUS' as const,
+      semantic_update: u.position_update,
+      new_tags: u.status ? [u.status] : []
+    }));
+  }
+  return response.state_changes || [];
+}
+
+// Helper to get next options from either field
+export function getNextOptions(response: AIGameResponse): CatalystOption[] {
+  return response.next_tactical_options || response.next_options || [];
 }
 
 export interface UnitUpdate {
@@ -271,10 +317,12 @@ export interface UnitUpdate {
   position_update?: SemanticPlacement;
 }
 
-// Deprecated but kept for reference
+// Deprecated but kept for reference - now extends to support all action types in mock data
 export interface StateChange {
   unit_id: string
-  action: "MOVE" | "UPDATE_STATUS" | "REMOVE"
+  action: "MOVE" | "UPDATE_STATUS" | "REMOVE" | "HOLD" | "BOMBARD" | "ASSAULT" | "RETREAT" | 
+          "FIRE_SHIP" | "NAVAL_RAM" | "ADVANCE" | "FLANK" | "ENCIRCLE" | "SPEARHEAD" | 
+          "FORTIFY" | "BOARDING" | "SUPPRESS" | "CHARGING" | "DEFENDING" | "VICTORY" | string
   to_region?: string
   semantic_update?: SemanticPlacement;
   new_tags?: string[]
@@ -282,7 +330,7 @@ export interface StateChange {
 }
 
 export interface VisualEffect {
-  type: "MUD_SPLAT" | "EXPLOSION" | "SMOKE" | "FIRE" | "DUST" | "IMPACT"
+  type: "MUD_SPLAT" | "EXPLOSION" | "SMOKE" | "FIRE" | "DUST" | "IMPACT" | "WATER_SPLASH"
   region?: string
   target_unit?: string
   position?: Location

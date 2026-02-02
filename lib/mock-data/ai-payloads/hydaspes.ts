@@ -1,4 +1,4 @@
-import type { AIGameResponse } from "../../../types"
+import type { AIGameResponse } from "../../types"
 
 export const HYDASPES_PAYLOADS: Record<string, AIGameResponse> = {
   hyd_opt_1: {

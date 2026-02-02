@@ -152,6 +152,6 @@ export async function POST(req: Request) {
       usage: normalizeUsage(usage),
       prompt: prompt,
       systemPrompt: systemInstructions
-    }, { status: 422 } as any);
+    }, { status: 422 });
   }
 }

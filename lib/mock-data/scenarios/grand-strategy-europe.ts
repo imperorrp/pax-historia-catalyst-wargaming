@@ -75,7 +75,7 @@ export const grandStrategyEurope: WarRoomScenario = {
          targetRegionId: "west_fortress",
          visualEffects: ["SMOKE"],
          compositeActions: [
-             { semanticAction: "FORTIFY", targetRegionId: "west_fortress", description: "Reinforce lines" },
+             { semanticAction: "FORTIFY", targetLogic: "specific_region", targetRegionId: "west_fortress", description: "Reinforce lines" },
              { semanticAction: "AIRSTRIKE", targetLogic: "specific_region", targetRegionId: "east_germania", description: "Bombard staging grounds" }
          ]
        },
@@ -87,8 +87,8 @@ export const grandStrategyEurope: WarRoomScenario = {
          targetLogic: "flank_left",
          visualEffects: ["EXPLOSION", "MUD_SPLAT"],
          compositeActions: [
-             { semanticAction: "MANEUVER", targetRegionId: "northern_sea", requiredUnitTypes: ["naval"], description: "Fleet establishes corridor" },
-             { semanticAction: "FLANK_RIGHT", targetRegionId: "low_countries", requiredUnitTypes: ["infantry", "armor"], description: "Landings in Low Countries" },
+             { semanticAction: "MANEUVER", targetLogic: "specific_region", targetRegionId: "northern_sea", requiredUnitTypes: ["naval"], description: "Fleet establishes corridor" },
+             { semanticAction: "FLANK_RIGHT", targetLogic: "specific_region", targetRegionId: "low_countries", requiredUnitTypes: ["infantry", "armor"], description: "Landings in Low Countries" },
              { semanticAction: "BOMBARD", targetLogic: "flank_right", requiredUnitTypes: ["naval"], description: "Coastal bombardment" }
          ]
        },

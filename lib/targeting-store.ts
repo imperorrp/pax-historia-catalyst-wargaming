@@ -68,7 +68,7 @@ export const useTargetingStore = create<TargetingStore>((set, get) => ({
   },
   gameResponse: null,
   isAnimating: false,
-  history: [{ round: 1, scenario: initialScenario, narrative: "Initial deployment", tacticUsed: null }],
+  history: [{ round: 1, scenario: initialScenario, narrative: "Initial deployment", tacticUsed: null, gameResponse: null }],
   historyIndex: 0,
   debugMode: false,
 

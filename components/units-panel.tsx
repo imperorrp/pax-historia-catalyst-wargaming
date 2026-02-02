@@ -4,12 +4,13 @@ import { useRef } from "react"
 import { motion } from "framer-motion"
 import { Radio, ChevronUp, ChevronDown } from "lucide-react"
 import { useTargetingStore } from "@/lib/targeting-store"
+import type { WarRoomScenario, Unit } from "@/lib/types"
 
 interface UnitsPanelProps {
   isExpanded: boolean
   onToggle: () => void
-  currentScenario: any
-  selectedUnit: any
+  currentScenario: WarRoomScenario
+  selectedUnit: Unit | null
 }
 
 export function UnitsPanel({

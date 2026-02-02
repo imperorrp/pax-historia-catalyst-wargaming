@@ -150,10 +150,10 @@ A besieged fortress is more than stone and mortarâ€”it is the heart of a regionâ
         title: "Fortify & Defend",
         description: "Entrench siege lines and prepare defenses against relief forces.",
         semanticAction: "FORTIFY",
-        compositeActions: [
-           { semanticAction: "FORTIFY", requiredUnitTypes: ["infantry"], description: "Fortify siege lines" },
-           { semanticAction: "HOLD", requiredUnitTypes: ["infantry"], description: "Defend against relief" }
-        ]
+          compositeActions: [
+            { semanticAction: "FORTIFY", targetLogic: "self", requiredUnitTypes: ["infantry"], description: "Fortify siege lines" },
+            { semanticAction: "HOLD", targetLogic: "self", requiredUnitTypes: ["infantry"], description: "Defend against relief" }
+          ]
       }
     ]
   }

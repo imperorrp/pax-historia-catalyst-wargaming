@@ -1,4 +1,4 @@
-import type { AIGameResponse } from "../../../types"
+import type { AIGameResponse } from "../../types"
 
 export const BLITZKRIEG_PAYLOADS: Record<string, AIGameResponse> = {
   bk_opt_panzer: {

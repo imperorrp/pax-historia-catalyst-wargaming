@@ -6,12 +6,13 @@ import { Check, Target, ChevronUp, ChevronDown, AlertCircle } from "lucide-react
 import { CatalystCard } from "./catalyst-card"
 import { useTargetingStore } from "@/lib/targeting-store"
 import { useAIStore } from "@/lib/ai/store"
+import type { WarRoomScenario, CatalystOption } from "@/lib/types"
 
 interface TacticalPanelProps {
   isExpanded: boolean
   onToggle: () => void
-  currentScenario: any
-  selectedTactic: any
+  currentScenario: WarRoomScenario
+  selectedTactic: CatalystOption | null
   isHistoricalView: boolean
   onCommit: () => void
   isAnimating: boolean

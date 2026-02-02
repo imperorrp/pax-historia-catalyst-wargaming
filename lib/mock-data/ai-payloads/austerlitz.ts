@@ -1,4 +1,4 @@
-import type { AIGameResponse } from "../../../types"
+import type { AIGameResponse } from "../../types"
 
 export const AUSTERLITZ_PAYLOADS: Record<string, AIGameResponse> = {
   nopt_main: {

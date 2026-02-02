@@ -1,4 +1,4 @@
-import type { AIGameResponse } from "../../../types"
+import type { AIGameResponse } from "../../types"
 
 export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
   opt_nelson_touch: {

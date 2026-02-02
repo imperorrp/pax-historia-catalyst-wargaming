@@ -1,4 +1,4 @@
-import type { AIGameResponse } from "../../../types"
+import type { AIGameResponse } from "../../types"
 
 export const MEDIEVAL_SIEGE_PAYLOADS: Record<string, AIGameResponse> = {
   medopt_bombard: {

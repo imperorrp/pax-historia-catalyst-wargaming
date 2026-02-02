@@ -22,11 +22,11 @@ export async function POST(req: Request) {
   const resolvedApiKey = apiKey || (provider === 'google' ? headerGoogleKey : headerOpenAIKey);
   // Validate model/provider compatibility
   if (provider === 'google' && model && model.toLowerCase().includes('gpt')) {
-    return Response.json({ error: `Selected model "${model}" appears to be an OpenAI model while provider is Google. Please choose a Google model (e.g., 'gemini-1.5-pro') or switch provider to 'openai'.` }, { status: 400 } as any);
+    return Response.json({ error: `Selected model "${model}" appears to be an OpenAI model while provider is Google. Please choose a Google model (e.g., 'gemini-1.5-pro') or switch provider to 'openai'.` }, { status: 400 });
   }
 
   if (provider === 'openai' && model && model.toLowerCase().includes('gemini')) {
-    return Response.json({ error: `Selected model "${model}" appears to be a Google model while provider is OpenAI. Please choose an OpenAI model (e.g., 'gpt-4o') or switch provider to 'google'.` }, { status: 400 } as any);
+    return Response.json({ error: `Selected model "${model}" appears to be a Google model while provider is OpenAI. Please choose an OpenAI model (e.g., 'gpt-4o') or switch provider to 'google'.` }, { status: 400 });
   }
   const modelInstance = getModel({ provider, apiKey: resolvedApiKey, model });
 
@@ -58,11 +58,11 @@ export async function POST(req: Request) {
     `;
 
   // Helper to normalize usage from different providers/SDKs
-  const normalizeUsage = (u: any) => {
+  const normalizeUsage = (u: Record<string, unknown> | null | undefined): { promptTokens: number; completionTokens: number; totalTokens: number } => {
     if (!u) return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
-    const promptTokens = u.promptTokens ?? u.prompt_tokens ?? u.input_tokens ?? u.prompt ?? 0;
-    const completionTokens = u.completionTokens ?? u.completion_tokens ?? u.output_tokens ?? u.completion ?? 0;
-    const totalTokens = u.totalTokens ?? u.total_tokens ?? u.total ?? (promptTokens + completionTokens) ?? 0;
+    const promptTokens = (u.promptTokens ?? u.prompt_tokens ?? u.input_tokens ?? u.prompt ?? 0) as number;
+    const completionTokens = (u.completionTokens ?? u.completion_tokens ?? u.output_tokens ?? u.completion ?? 0) as number;
+    const totalTokens = (u.totalTokens ?? u.total_tokens ?? u.total ?? (promptTokens + completionTokens)) as number;
     return { promptTokens, completionTokens, totalTokens };
   };
 
@@ -102,10 +102,10 @@ export async function POST(req: Request) {
       mapRegions: hydratedRegions,
       layoutDefs: layoutDefs,
       mapDimensions: mapDimensions,
-      playerPolity: scenarioData.playerPolity || scenarioData.player_polity || "Player",
-      enemyPolity: scenarioData.enemyPolity || scenarioData.enemy_polity || "Enemy",
+      playerPolity: scenarioData.playerPolity || "Player",
+      enemyPolity: scenarioData.enemyPolity || "Enemy",
       // CRITICAL FIX: Map 'tactical_options' (AI Schema) to 'options' (App Type)
-      options: scenarioData.tactical_options || scenarioData.options || [],
+      options: scenarioData.tactical_options || [],
       // Ensure units is an array
       units: scenarioData.units || []
     };
@@ -178,11 +178,11 @@ export async function POST(req: Request) {
     return Response.json({
       error: err?.message || String(err),
       raw: rawContent,
-      usage: normalizeUsage(usage),
+      usage: normalizeUsage(usage as Record<string, unknown>),
       _debug: {
         systemPrompt: systemInstructions,
         userPrompt: `Generate a scenario for: "${prompt}". Ensure units have valid region placements.`
       }
-    }, { status: 422 } as any);
+    }, { status: 422 });
   }
 }

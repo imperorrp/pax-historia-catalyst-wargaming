@@ -228,48 +228,100 @@ export function drawENCIRCLE({ ctx, from, to, opacity = 1 }: DrawingContext) {
 }
 
 export function drawFORTIFY({ ctx, from, opacity = 1 }: DrawingContext) {
+  console.log('[FORTIFY] Drawing at', from, 'with opacity', opacity);
   ctx.globalAlpha = opacity
+  
+  // Draw a large visible fortification symbol AROUND the unit
+  // Large sawtooth barrier surrounding the unit position
+  const toothWidth = 16
+  const toothHeight = 16
+  const teethCount = 8
+  const offsetY = 50 // Position well below unit token
+  const lineWidth = 60 // Wide defensive line
+
+  // Add glow for visibility
+  ctx.shadowColor = "rgba(52, 73, 94, 0.6)"
+  ctx.shadowBlur = 8
+  
   ctx.strokeStyle = "#34495e"
-  ctx.lineWidth = 3
+  ctx.lineWidth = 5
+  ctx.fillStyle = "rgba(52, 73, 94, 0.2)"
 
-  // Sawtooth fortification line in front of unit
-  const toothWidth = 8
-  const toothHeight = 8
-  const teethCount = 5
-
+  // Draw defensive barrier below unit
   ctx.beginPath()
-  ctx.moveTo(from.x - (teethCount * toothWidth) / 2, from.y + 10)
+  ctx.moveTo(from.x - lineWidth / 2, from.y + offsetY)
 
   for (let i = 0; i < teethCount; i++) {
-    const x = from.x - (teethCount * toothWidth) / 2 + i * toothWidth
-    ctx.lineTo(x + toothWidth / 2, from.y + 10 - toothHeight)
-    ctx.lineTo(x + toothWidth, from.y + 10)
+    const x = from.x - lineWidth / 2 + (i * lineWidth / teethCount)
+    ctx.lineTo(x + (lineWidth / teethCount) / 2, from.y + offsetY - toothHeight)
+    ctx.lineTo(x + lineWidth / teethCount, from.y + offsetY)
   }
 
   ctx.stroke()
+  
+  // Fill behind teeth for visibility
+  ctx.globalAlpha = opacity * 0.3
+  ctx.fillRect(from.x - lineWidth / 2, from.y + offsetY, lineWidth, 4)
+  
+  // Reset
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
   ctx.globalAlpha = 1
+  console.log('[FORTIFY] Drawing complete');
 }
 
 export function drawHOLD({ ctx, from, opacity = 1 }: DrawingContext) {
+  console.log('[HOLD] Drawing at', from, 'with opacity', opacity);
   ctx.globalAlpha = opacity
+  
+  // Large visible shield/hold symbol AROUND the unit
+  const radius = 45 // Much larger radius to extend beyond unit token
+  
+  // Glow effect for visibility
+  ctx.shadowColor = "rgba(52, 152, 219, 0.6)"
+  ctx.shadowBlur = 10
+  
   ctx.strokeStyle = "#3498db"
-  ctx.lineWidth = 3
-
-  // Circular barrier around unit position
-  const radius = 18
+  ctx.lineWidth = 5
+  
+  // Outer defensive ring
   ctx.beginPath()
   ctx.arc(from.x, from.y, radius, 0, Math.PI * 2)
   ctx.stroke()
-
-  // Cross in center to indicate hold
+  
+  // Inner ring for double barrier effect
+  ctx.lineWidth = 3
   ctx.beginPath()
-  ctx.moveTo(from.x - 8, from.y)
-  ctx.lineTo(from.x + 8, from.y)
-  ctx.moveTo(from.x, from.y - 8)
-  ctx.lineTo(from.x, from.y + 8)
+  ctx.arc(from.x, from.y, radius - 8, 0, Math.PI * 2)
   ctx.stroke()
 
+  // Large cross/shield emblem in center
+  ctx.lineWidth = 6
+  ctx.lineCap = "round"
+  const crossSize = 20
+  ctx.beginPath()
+  ctx.moveTo(from.x - crossSize, from.y)
+  ctx.lineTo(from.x + crossSize, from.y)
+  ctx.moveTo(from.x, from.y - crossSize)
+  ctx.lineTo(from.x, from.y + crossSize)
+  ctx.stroke()
+  
+  // Shield quarters (diagonal lines for shield pattern)
+  ctx.globalAlpha = opacity * 0.4
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(from.x - crossSize, from.y - crossSize)
+  ctx.lineTo(from.x + crossSize, from.y + crossSize)
+  ctx.moveTo(from.x + crossSize, from.y - crossSize)
+  ctx.lineTo(from.x - crossSize, from.y + crossSize)
+  ctx.stroke()
+
+  // Reset
+  ctx.shadowColor = "transparent"
+  ctx.shadowBlur = 0
+  ctx.lineCap = "butt"
   ctx.globalAlpha = 1
+  console.log('[HOLD] Drawing complete');
 }
 
 export function drawAMBUSH({ ctx, from, opacity = 1 }: DrawingContext) {
@@ -1012,6 +1064,9 @@ export function renderVisualAction(action: VisualActionType, context: DrawingCon
     BOARDING: drawBOARDING,
     MANEUVER: drawMANEUVER,
     LINE_OF_BATTLE: drawLINE_OF_BATTLE,
+    DIVERSION: drawRETREAT, // Tactical deception  
+    VICTORY: drawHOLD, // Celebration/static pose
+    DIPLOMACY: drawRECON, // Parley/negotiation
   }
 
   const renderer = renderers[action]
