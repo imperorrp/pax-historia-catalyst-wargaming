@@ -7,7 +7,10 @@ import {
   TAG_LIBRARY,
   FX_LIBRARY,
   TERRAIN_GUIDE,
-  TURN_EXAMPLE_JSON
+  TURN_EXAMPLE_JSON,
+  REGION_CHANGE_EXAMPLES,
+  LAYOUT_GENERATION_RULES,
+  SCENARIO_EXAMPLE_JSON
 } from '@/lib/ai/knowledge-base';
 
 export async function POST(req: Request) {
@@ -54,6 +57,40 @@ export async function POST(req: Request) {
        - Defending? Consolidate in defensible regions
        - Maneuvering? Use neutral or transitional regions
 
+    ### DYNAMIC BATTLEFIELD: REGION CHANGES (OPTIONAL)
+    You can modify the map itself when the tactical situation fundamentally changes. Use "region_changes" array:
+    
+    **CREATE_REGION**: When units form a NEW spatial grouping that doesn't fit existing regions.
+    Example: A fleet forms a battle line, troops dig new trenches, a breakthrough creates a salient.
+    \`\`\`json
+    {
+      "action": "CREATE_REGION",
+      "region_def": {
+        "id": "british-battle-line",
+        "name": "British Battle Line",
+        "type": "path",           // "path" for lines/columns, "blob" for areas
+        "terrain": "water",       // Match the scenario's terrain type
+        "points": [[200, 300], [600, 300]],  // Guide points (x: 0-1000, y: 0-800)
+        "influence": 50           // Width/size (30-60 for tight, 100+ for large)
+      }
+    }
+    \`\`\`
+    
+    **REMOVE_REGION**: When a formation/position no longer exists.
+    Example: A column disperses, a defensive line collapses, a fleet scatters.
+    \`\`\`json
+    { "action": "REMOVE_REGION", "region_id": "weather-column" }
+    \`\`\`
+    
+    **MODIFY_REGION**: When a region changes size or character.
+    Example: A position is overrun (shrinks), fortifications are built (terrain change).
+    \`\`\`json
+    { "action": "MODIFY_REGION", "region_id": "enemy-rear", "updates": { "name": "Shattered Rear Guard", "influence": 30 } }
+    \`\`\`
+    
+    **WHEN TO USE**: Only when the battlefield fundamentally reshapes. Most turns just need unit MOVE actions.
+    **IMPORTANT**: After CREATE_REGION, you can immediately MOVE units to the new region in the same response.
+
     ### TERRAIN & PHYSICS
     ${TERRAIN_GUIDE}
     - Consider how terrain affects the tactic's success
@@ -70,6 +107,12 @@ export async function POST(req: Request) {
     ${TAG_LIBRARY}
     ${FX_LIBRARY}
 
+    ### MAP LAYOUT RULES
+    ${LAYOUT_GENERATION_RULES}
+
+    ### REGION CHANGE REFERENCE
+    ${REGION_CHANGE_EXAMPLES}
+
     ### REFERENCE EXAMPLE (STRUCTURE ONLY)
     ${TURN_EXAMPLE_JSON}
     
@@ -77,12 +120,11 @@ export async function POST(req: Request) {
     
     **KEY INSIGHT**: Players feel the game is responsive when they see units physically move on the map. A "Form Line" order where nothing moves feels broken. A "Charge" where attackers don't enter the enemy region feels wrong. Let the map reflect the action.
     
-    Do not invent new Region IDs. Use existing ones from the context.
-    
     ### OUTPUT FORMAT
     1. You MAY include reasoning in a "thought_chain" field.
     2. You MUST output a valid JSON object matching the schema.
     3. Be dramatic in narrative_outcome but precise in state_changes.
+    4. Use region_changes ONLY when the map needs to change shape.
 
     ${userSystemPrompt || ""}
   `;

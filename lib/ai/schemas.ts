@@ -1,5 +1,41 @@
 import { z } from "zod";
 
+// Schema for creating new regions dynamically
+const RegionDefSchema = z.object({
+  id: z.string().describe("Unique identifier for the new region"),
+  name: z.string().describe("Display name for the region"),
+  type: z.enum(["point", "path", "blob"]).describe("'path' for linear formations (columns, lines), 'blob' for areas"),
+  terrain: z.string().describe("Terrain type - should match scenario context (e.g., 'water' for naval, 'plains' for land)"),
+  points: z.array(z.array(z.number())).describe("Guide points: single [x,y] for blob, multiple for path. Use 0-1000 for x, 0-800 for y."),
+  influence: z.number().describe("Size/width of the region. 30-60 for tight formations, 100+ for larger areas.")
+});
+
+// Schema for modifying existing regions
+const RegionModifySchema = z.object({
+  name: z.string().optional(),
+  influence: z.number().optional(),
+  terrain: z.string().optional()
+});
+
+// Unit state change (existing)
+const UnitStateChangeSchema = z.object({
+  unit_id: z.string(),
+  action: z.enum(["MOVE", "UPDATE_STATUS", "BOMBARD", "HOLD", "REMOVE"]),
+  semantic_update: z.object({
+    regionId: z.string(),
+    tag: z.string()
+  }).optional(),
+  new_tags: z.array(z.string()).optional()
+});
+
+// Region change operations (new)
+const RegionChangeSchema = z.object({
+  action: z.enum(["CREATE_REGION", "REMOVE_REGION", "MODIFY_REGION"]),
+  region_id: z.string().optional().describe("Required for REMOVE_REGION and MODIFY_REGION"),
+  region_def: RegionDefSchema.optional().describe("Required for CREATE_REGION"),
+  updates: RegionModifySchema.optional().describe("Required for MODIFY_REGION")
+});
+
 // The AI generates this to build a map
 export const RegionLayoutSchema = z.object({
   id: z.string(),
@@ -67,15 +103,15 @@ export const ScenarioGenerationSchema = z.object({
 export const TurnResolutionSchema = z.object({
     thought_chain: z.string().optional(),
     narrative_outcome: z.string(),
-    state_changes: z.array(z.object({
-        unit_id: z.string(),
-        action: z.enum(["MOVE", "UPDATE_STATUS", "BOMBARD", "HOLD", "REMOVE"]),
-        semantic_update: z.object({
-          regionId: z.string(),
-          tag: z.string()
-        }).optional(),
-        new_tags: z.array(z.string()).optional()
-    })),
+    
+    // Unit state changes
+    state_changes: z.array(UnitStateChangeSchema),
+    
+    // Region modifications (optional - for dynamic battlefield changes)
+    region_changes: z.array(RegionChangeSchema).optional().describe(
+      "Optional: Create new regions (e.g., battle lines, breaches), remove obsolete ones, or modify existing regions. Use sparingly - only when the battlefield fundamentally changes shape."
+    ),
+    
     visual_fx: z.array(z.object({
       type: z.enum(["MUD_SPLAT", "EXPLOSION", "SMOKE", "FIRE", "DUST", "IMPACT", "WATER_SPLASH"]),
       region: z.string().optional(),

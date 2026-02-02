@@ -4,6 +4,23 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
   opt_nelson_touch: {
     narrative_update:
       "The 'Nelson Touch' executes perfectly! The weather column led by HMS Victory breaks the enemy line just astern of the Bucentaure, while Collingwood's lee column shatters the enemy rear. The Allied formation is cut in three, with their van unable to tack back in time.",
+    region_changes: [
+      {
+        action: "MODIFY_REGION",
+        region_id: "enemy-center",
+        updates: {
+          name: "Shattered Center",
+          influence: 70
+        }
+      },
+      {
+        action: "MODIFY_REGION",
+        region_id: "enemy-rear",
+        updates: {
+          name: "Surrounded Rear Guard"
+        }
+      }
+    ],
     state_changes: [
       // Weather column pierces enemy center
       {
@@ -110,42 +127,63 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
   opt_pell_mell: {
     narrative_update:
       "A chaotic melee ensues! Ships engage muzzle-to-muzzle in a swirling fog of war. Superior British gunnery begins to tell, but losses are heavy on both sides. The Redoutable puts up a fierce resistance against the Victory.",
+    region_changes: [
+      {
+        action: "CREATE_REGION",
+        region_def: {
+          id: "melee-zone",
+          name: "Chaotic Melee",
+          type: "blob",
+          terrain: "water",
+          influence: 120,
+          points: [[500, 300]]
+        }
+      },
+      {
+        action: "REMOVE_REGION",
+        region_id: "weather-column"
+      },
+      {
+        action: "REMOVE_REGION",
+        region_id: "lee-column"
+      }
+    ],
     state_changes: [
-      // Ships scatter into close-quarters melee across regions
+      // Ships scatter into close-quarters melee - all converge on new melee zone
       {
         unit_id: "br_victory",
         action: "MOVE",
-        semantic_update: { regionId: "enemy-center", tag: "front_line" },
+        semantic_update: { regionId: "melee-zone", tag: "center" },
         new_tags: ["Grappled", "Heavy Damage", "Sniper Fire"],
       },
       {
         unit_id: "fr_redoutable",
         action: "MOVE",
-        semantic_update: { regionId: "enemy-center", tag: "front_line" },
+        semantic_update: { regionId: "melee-zone", tag: "center" },
         new_tags: ["Grappled", "Boarding", "Elite Defense"],
       },
       {
         unit_id: "br_temeraire",
         action: "MOVE",
-        semantic_update: { regionId: "enemy-center", tag: "center" },
+        semantic_update: { regionId: "melee-zone", tag: "front_line" },
         new_tags: ["Saving Nelson", "Double Broadside"],
       },
       {
         unit_id: "br_royal_sovereign",
         action: "MOVE",
-        semantic_update: { regionId: "enemy-rear", tag: "front_line" },
+        semantic_update: { regionId: "melee-zone", tag: "flank_left" },
         new_tags: ["Engaged", "Surrounded"],
       },
       {
         unit_id: "br_belleisle",
         action: "MOVE",
-        semantic_update: { regionId: "enemy-rear", tag: "center" },
+        semantic_update: { regionId: "melee-zone", tag: "flank_right" },
         new_tags: ["Dismasted", "Fighting On"],
       },
       {
         unit_id: "br_mars",
         action: "MOVE",
-        semantic_update: { regionId: "enemy-rear", tag: "flank_left" },
+        semantic_update: { regionId: "melee-zone", tag: "rear" },
         new_tags: ["Engaged", "Captain Wounded"],
       },
       {
@@ -160,10 +198,10 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
       }
     ],
     visual_fx: [
-      { type: "SMOKE", region: "enemy-center" },
+      { type: "SMOKE", region: "melee-zone" },
       { type: "FIRE", target_unit: "br_victory" },
       { type: "IMPACT", target_unit: "fr_redoutable" },
-      { type: "SMOKE", region: "enemy-rear" },
+      { type: "SMOKE", region: "melee-zone" },
       { type: "EXPLOSION", target_unit: "br_belleisle" }
     ],
     next_options: [
@@ -185,79 +223,100 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
   opt_conventional_line: {
     narrative_update:
       "The signal flies: 'Form Line of Battle'. Abandoning the daring column attack, the British fleet transforms into a single line parallel to the Combined Fleet. Every ship alters course, taking station in sequence. HMS Victory anchors the center while HMS Royal Sovereign guards the southern end. The maneuver is textbook, but it surrenders the initiative—the Combined Fleet's superior numbers can now bring all guns to bear.",
+    region_changes: [
+      {
+        action: "CREATE_REGION",
+        region_def: {
+          id: "british-battle-line",
+          name: "British Line of Battle",
+          type: "path",
+          terrain: "water",
+          influence: 45,
+          points: [[200, 150], [250, 250], [300, 350], [350, 450]]
+        }
+      },
+      {
+        action: "REMOVE_REGION",
+        region_id: "weather-column"
+      },
+      {
+        action: "REMOVE_REGION",
+        region_id: "lee-column"
+      }
+    ],
     state_changes: [
       // Weather Column ships form northern section of battle line
       {
         unit_id: "br_victory",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_1" },
+        semantic_update: { regionId: "british-battle-line", tag: "center" },
         new_tags: ["Battle Line", "Flagship", "Broadsides Ready"],
       },
       {
         unit_id: "br_temeraire",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_2" },
+        semantic_update: { regionId: "british-battle-line", tag: "front_line" },
         new_tags: ["Battle Line", "Supporting"],
       },
       {
         unit_id: "br_neptune",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_3" },
+        semantic_update: { regionId: "british-battle-line", tag: "center" },
         new_tags: ["Battle Line", "Veteran"],
       },
       {
         unit_id: "br_leviathan",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_4" },
+        semantic_update: { regionId: "british-battle-line", tag: "rear" },
         new_tags: ["Battle Line"],
       },
       {
         unit_id: "br_conqueror",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_5" },
+        semantic_update: { regionId: "british-battle-line", tag: "center" },
         new_tags: ["Battle Line"],
       },
       {
         unit_id: "br_britannia",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_6" },
+        semantic_update: { regionId: "british-battle-line", tag: "rear" },
         new_tags: ["Battle Line", "Heavy"],
       },
       // Lee Column ships form southern section of battle line
       {
         unit_id: "br_royal_sovereign",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_7" },
+        semantic_update: { regionId: "british-battle-line", tag: "front_line" },
         new_tags: ["Battle Line", "Fast"],
       },
       {
         unit_id: "br_belleisle",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_8" },
+        semantic_update: { regionId: "british-battle-line", tag: "center" },
         new_tags: ["Battle Line", "Durable"],
       },
       {
         unit_id: "br_mars",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_9" },
+        semantic_update: { regionId: "british-battle-line", tag: "center" },
         new_tags: ["Battle Line"],
       },
       {
         unit_id: "br_tonnant",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_10" },
+        semantic_update: { regionId: "british-battle-line", tag: "rear" },
         new_tags: ["Battle Line", "Powerful"],
       },
       {
         unit_id: "br_bellerophon",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_11" },
+        semantic_update: { regionId: "british-battle-line", tag: "rear" },
         new_tags: ["Battle Line"],
       },
       {
         unit_id: "br_colossus",
         action: "MOVE",
-        semantic_update: { regionId: "pixel-ocean", tag: "line_position_12" },
+        semantic_update: { regionId: "british-battle-line", tag: "rear" },
         new_tags: ["Battle Line", "Rear Guard"],
       },
       // Enemy responds by tightening their line
@@ -273,7 +332,7 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
       }
     ],
     visual_fx: [
-      { type: "SMOKE", region: "pixel-ocean" },
+      { type: "SMOKE", region: "british-battle-line" },
       { type: "DUST", region: "weather-column" },
       { type: "DUST", region: "lee-column" }
     ],
@@ -302,6 +361,16 @@ export const TRAFALGAR_PAYLOADS: Record<string, AIGameResponse> = {
   opt_cut_rear: {
     narrative_update:
       "Collingwood's column successfully isolates the enemy rear, overwhelming Santa Ana. The lee column ships swarm around the Spanish rear guard like wolves around wounded prey. However, the enemy van and center remain largely unengaged and are slowly turning to envelope your separated force.",
+    region_changes: [
+      {
+        action: "MODIFY_REGION",
+        region_id: "enemy-rear",
+        updates: {
+          name: "Isolated Rear (Under Attack)",
+          influence: 40
+        }
+      }
+    ],
     state_changes: [
       // Lee column concentrates on enemy rear
       {

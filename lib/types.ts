@@ -280,10 +280,34 @@ export interface AIGameResponse {
   visual_fx?: VisualEffect[];
   next_tactical_options?: CatalystOption[];
   
+  // Region modification operations
+  region_changes?: RegionChange[];
+  
   // Legacy fields (mock data and backwards compat)
   narrative_update?: string;
   state_changes?: StateChange[];
   next_options?: CatalystOption[];
+}
+
+// Region change operation types
+export type RegionChangeAction = "CREATE_REGION" | "REMOVE_REGION" | "MODIFY_REGION";
+
+export interface RegionChange {
+  action: RegionChangeAction;
+  region_id?: string; // Required for REMOVE and MODIFY
+  region_def?: {
+    id: string;
+    name: string;
+    type: "point" | "path" | "blob";
+    terrain: string;
+    points: [number, number][];
+    influence: number;
+  };
+  updates?: {
+    name?: string;
+    influence?: number;
+    terrain?: string;
+  };
 }
 
 // Helper to get the narrative from either field

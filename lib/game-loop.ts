@@ -1,7 +1,9 @@
 import { useAIStore } from "./ai/store"
 import { SAMPLE_PAYLOADS } from "./mock-data/ai-payloads"
 import { resolveSemanticPosition } from "./geometry-utils"
-import { WarRoomScenario, GameLoopContext, AIGameResponse } from "@/lib/types"
+import { WarRoomScenario, GameLoopContext, AIGameResponse, RegionChange, RegionLayoutDef } from "@/lib/types"
+import { generatePaintedMap } from "./grid-engine/map-painter"
+import { HexGridManager } from "./hex-grid-manager"
 
 // Helper to generate a fake prompt for visualization
 function generateMockPrompt(tacticId: string, round: number) {
@@ -128,8 +130,17 @@ export function createGameLoopContext(scenario: WarRoomScenario, round: number, 
 }
 
 export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGameResponse): WarRoomScenario {
-  // Capture region IDs for sanity check
-  const regionIds = new Set((scenario.mapRegions || []).map((r: any) => r.id));
+  // ---------------------------------------------------------
+  // STEP 0: PROCESS REGION CHANGES (before unit changes)
+  // ---------------------------------------------------------
+  let updatedScenario = scenario;
+  
+  if (response.region_changes && response.region_changes.length > 0) {
+    updatedScenario = processRegionChanges(scenario, response.region_changes);
+  }
+  
+  // Capture region IDs for sanity check (use updated scenario)
+  const regionIds = new Set((updatedScenario.mapRegions || []).map((r: any) => r.id));
 
   // ---------------------------------------------------------
   // PATH A: NEW SCHEMA (state_changes / unit_updates aliases)
@@ -156,14 +167,14 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
   const movingUnitIds = new Set(updates.filter((u: any) => u.action === 'MOVE').map((u: any) => u.unit_id));
   const removedUnitIds = new Set(updates.filter((u: any) => u.action === 'REMOVE').map((u: any) => u.unit_id));
 
-  scenario.units.forEach((u: any) => {
+  updatedScenario.units.forEach((u: any) => {
     if (!movingUnitIds.has(u.id) && !removedUnitIds.has(u.id) && u.hex) {
       occupiedHexes.add(`${u.hex.q},${u.hex.r}`);
     }
   });
 
   // 2. Process units
-  const updatedUnits = scenario.units.map((unit) => {
+  const updatedUnits = updatedScenario.units.map((unit) => {
     const change = updates.find((c) => c.unit_id === unit.id);
 
     // Case 1: No Change
@@ -182,12 +193,12 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
         return unit; // Ignore move
       }
 
-      if (!scenario.hexGrid) {
+      if (!updatedScenario.hexGrid) {
         console.warn("No hexGrid available for movement");
         return unit; 
       }
 
-      const targetRegionHexes = scenario.hexGrid.filter((h: any) => h.regionId === change.semantic_update!.regionId);
+      const targetRegionHexes = updatedScenario.hexGrid.filter((h: any) => h.regionId === change.semantic_update!.regionId);
       if (targetRegionHexes.length === 0) {
         console.warn(`No hexes found for region ${change.semantic_update!.regionId}`);
         return unit;
@@ -236,10 +247,132 @@ export function reconcileStateChanges(scenario: WarRoomScenario, response: AIGam
   const finalUnits = updatedUnits.filter(Boolean);
 
   return {
-    ...scenario,
+    ...updatedScenario,
     units: finalUnits,
-    options: response.next_tactical_options || response.next_options || scenario.options,
+    options: response.next_tactical_options || response.next_options || updatedScenario.options,
   }
+}
+
+/**
+ * Process region changes (CREATE, REMOVE, MODIFY) and regenerate the map.
+ * This is called before unit changes so units can move to newly created regions.
+ */
+function processRegionChanges(scenario: WarRoomScenario, changes: RegionChange[]): WarRoomScenario {
+  if (!scenario.layoutDefs) {
+    console.warn("Cannot process region changes: scenario has no layoutDefs");
+    return scenario;
+  }
+
+  let layoutDefs = [...scenario.layoutDefs];
+  let needsRegeneration = false;
+
+  for (const change of changes) {
+    switch (change.action) {
+      case "CREATE_REGION":
+        if (change.region_def) {
+          // Validate that region ID doesn't already exist
+          if (layoutDefs.some(d => d.id === change.region_def!.id)) {
+            console.warn(`Region ${change.region_def.id} already exists, skipping creation`);
+            continue;
+          }
+          
+          // Convert AI schema to RegionLayoutDef
+          const newLayoutDef: RegionLayoutDef = {
+            id: change.region_def.id,
+            name: change.region_def.name,
+            type: change.region_def.type,
+            terrain: change.region_def.terrain,
+            points: change.region_def.points,
+            influence: change.region_def.influence,
+            seeds: 1, // Default seed count
+          };
+          
+          // Insert BEFORE the last element (which is usually the background ocean/plains)
+          // This ensures new regions "paint over" the background
+          if (layoutDefs.length > 1) {
+            layoutDefs.splice(layoutDefs.length - 1, 0, newLayoutDef);
+          } else {
+            layoutDefs.push(newLayoutDef);
+          }
+          
+          needsRegeneration = true;
+          console.log(`Created new region: ${change.region_def.id} (${change.region_def.name})`);
+        }
+        break;
+
+      case "REMOVE_REGION":
+        if (change.region_id) {
+          const index = layoutDefs.findIndex(d => d.id === change.region_id);
+          if (index === -1) {
+            console.warn(`Cannot remove region ${change.region_id}: not found`);
+            continue;
+          }
+          
+          // Don't allow removing the last region (background)
+          if (layoutDefs.length <= 1) {
+            console.warn(`Cannot remove last region`);
+            continue;
+          }
+          
+          layoutDefs.splice(index, 1);
+          needsRegeneration = true;
+          console.log(`Removed region: ${change.region_id}`);
+        }
+        break;
+
+      case "MODIFY_REGION":
+        if (change.region_id && change.updates) {
+          const def = layoutDefs.find(d => d.id === change.region_id);
+          if (!def) {
+            console.warn(`Cannot modify region ${change.region_id}: not found`);
+            continue;
+          }
+          
+          if (change.updates.name) def.name = change.updates.name;
+          if (change.updates.terrain) def.terrain = change.updates.terrain;
+          if (change.updates.influence) {
+            def.influence = change.updates.influence;
+            needsRegeneration = true; // Size change requires regeneration
+          }
+          
+          console.log(`Modified region: ${change.region_id}`);
+        }
+        break;
+    }
+  }
+
+  // If no structural changes, just return with updated layoutDefs
+  if (!needsRegeneration) {
+    return {
+      ...scenario,
+      layoutDefs,
+    };
+  }
+
+  // Regenerate the map from updated layoutDefs
+  const { width, height } = scenario.mapDimensions;
+  const scaleType = scenario.scaleType || 'tactical';
+  
+  console.log(`Regenerating map with ${layoutDefs.length} regions...`);
+  const newMapRegions = generatePaintedMap(layoutDefs, width, height, scaleType);
+  
+  // Regenerate hex grid
+  const hexRadius = 30; // Default hex radius
+  const newHexGrid = HexGridManager.generateHexGrid(newMapRegions, width, height, hexRadius);
+  
+  // Build hex index for fast lookup
+  const newHexIndex: Record<string, any> = {};
+  newHexGrid.forEach(h => {
+    newHexIndex[`${h.q},${h.r}`] = h;
+  });
+
+  return {
+    ...scenario,
+    layoutDefs,
+    mapRegions: newMapRegions,
+    hexGrid: newHexGrid,
+    hexIndex: newHexIndex,
+  };
 }
 
 function getWeatherForRound(round: number): string {

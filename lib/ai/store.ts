@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { SCENARIO_SYSTEM_PROMPT, TURN_SYSTEM_PROMPT } from './system-instructions';
 
 // Define the shape of a single AI interaction
 export interface AITransaction {
@@ -77,12 +78,8 @@ export const useAIStore = create<AIState>((set, get) => ({
   googleKey: '',
   selectedModel: 'gpt-4o',
   
-  scenarioSystemPrompt: `You are the Game Master for "Pax Historia", a tactical war game.
-Your job is to generate a balanced, historically plausible battlefield scenario.
-Ensure the layout makes tactical sense (e.g., defenders on hills, rivers blocking paths).`, 
-  turnSystemPrompt: `You are a tactical wargame referee engine. Your goal is to resolve turn-based combat with dramatic flair and tactical realism. 
-Maintain a consistent JSON output format as specified in the schema. 
-Be creative with "visual_actions" to describe the flow of battle.`, 
+  scenarioSystemPrompt: SCENARIO_SYSTEM_PROMPT, 
+  turnSystemPrompt: TURN_SYSTEM_PROMPT, 
 
   lastScenarioPrompt: null,
   lastScenarioSystemPrompt: null,

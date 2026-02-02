@@ -74,12 +74,41 @@ VALID TERRAIN TYPES & RULES:
 export const LAYOUT_GENERATION_RULES = `
 RULES FOR GENERATING MAP REGIONS (The 'Painter's Algorithm'):
 1. DO NOT define polygons. Define 'points' (centers).
-2. 'type': "path" is for Rivers/Roads. Give it multiple points to create a curve.
-3. 'type': "blob" is for Forests/Plains. Give it one central point.
+2. 'type': "path" is for Rivers/Roads/Formations. Give it multiple points to create a line.
+3. 'type': "blob" is for Areas/Positions/Zones. Give it one central point.
 4. 'influence': High number (e.g., 200) makes the region bigger. Low number (50) makes it smaller.
 5. Coordinate Space: 0-1000 Width, 0-800 Height.
    - 0,0 is Top-Left. 
    - 1000,800 is Bottom-Right.
+`;
+
+export const REGION_CHANGE_EXAMPLES = `
+DYNAMIC REGION OPERATIONS (Use when the battlefield fundamentally reshapes):
+
+CREATE_REGION - When a new spatial grouping forms:
+- Battle lines (fleets forming line of battle, infantry forming firing line)
+- Breakthroughs (salient, penetration point)
+- New defensive positions (trenches, hasty fortifications)
+- Example: { "action": "CREATE_REGION", "region_def": { "id": "british-line", "name": "British Line of Battle", "type": "path", "terrain": "water", "points": [[200,400],[600,400]], "influence": 40 }}
+
+REMOVE_REGION - When a formation/position dissolves:
+- Broken formations (scattered fleet, routed infantry line)
+- Captured positions (enemy stronghold falls)
+- Tactical obsolescence (bypass makes position irrelevant)
+- Example: { "action": "REMOVE_REGION", "region_id": "french-van" }
+
+MODIFY_REGION - When a region changes character:
+- Size changes (expanding breakthrough, shrinking pocket)
+- Terrain changes (fortifications built, area flooded)
+- Name changes (position renamed after capture)
+- Example: { "action": "MODIFY_REGION", "region_id": "hilltop", "updates": { "name": "Captured Hilltop", "terrain": "fortified" }}
+
+WHEN TO USE: Sparingly. Most turns just need unit MOVEs. Region changes are for:
+1. Formations that CREATE new tactical spaces (lines, columns, wedges)
+2. Dramatic shifts in battlefield geometry (breakthroughs, collapses)
+3. When existing regions no longer reflect tactical reality
+
+COORDINATE SPACE REMINDER: x: 0-1000, y: 0-800. Top-left is (0,0).
 `;
 
 // ONE-SHOT EXAMPLE: SCENARIO GENERATION

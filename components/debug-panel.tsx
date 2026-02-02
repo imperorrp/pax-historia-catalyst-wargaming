@@ -14,6 +14,7 @@ import {
   LAYOUT_GENERATION_RULES,
   TAG_LIBRARY,
   FX_LIBRARY,
+  REGION_CHANGE_EXAMPLES,
   SCENARIO_EXAMPLE_JSON,
   TURN_EXAMPLE_JSON
 } from "@/lib/ai/knowledge-base"
@@ -523,19 +524,23 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
 
                         <div className="space-y-1">
                             {promptEngineTab === 'scenario' ? (
-                                <>
-                                    <DetailsAccordion title="Layout Generation Rules" content={LAYOUT_GENERATION_RULES} />
-                                    <DetailsAccordion title="Terrain Guide" content={TERRAIN_GUIDE} />
-                                    <DetailsAccordion title="Visual Vocabulary (Actions)" content={VISUAL_VOCABULARY} />
-                                    <DetailsAccordion title="Tag Library" content={TAG_LIBRARY} />
-                                </>
+                              <>
+                                <DetailsAccordion title="Layout Generation Rules" content={LAYOUT_GENERATION_RULES} />
+                                <DetailsAccordion title="Terrain Guide" content={TERRAIN_GUIDE} />
+                                <DetailsAccordion title="Visual Vocabulary (Actions)" content={VISUAL_VOCABULARY} />
+                                <DetailsAccordion title="Tag Library" content={TAG_LIBRARY} />
+                                <DetailsAccordion title="Scenario Example (Structure)" content={SCENARIO_EXAMPLE_JSON} />
+                              </>
                             ) : (
-                                <>
-                                    <DetailsAccordion title="Terrain Physics" content={TERRAIN_GUIDE} />
-                                    <DetailsAccordion title="Visual Vocabulary (Actions)" content={VISUAL_VOCABULARY} />
-                                    <DetailsAccordion title="Tag Library (Status)" content={TAG_LIBRARY} />
-                                    <DetailsAccordion title="FX Library (Visuals)" content={FX_LIBRARY} />
-                                </>
+                              <>
+                                <DetailsAccordion title="Layout Generation Rules" content={LAYOUT_GENERATION_RULES} />
+                                <DetailsAccordion title="Terrain Physics" content={TERRAIN_GUIDE} />
+                                <DetailsAccordion title="Visual Vocabulary (Actions)" content={VISUAL_VOCABULARY} />
+                                <DetailsAccordion title="Tag Library (Status)" content={TAG_LIBRARY} />
+                                <DetailsAccordion title="FX Library (Visuals)" content={FX_LIBRARY} />
+                                <DetailsAccordion title="Region Change Guide" content={REGION_CHANGE_EXAMPLES} />
+                                <DetailsAccordion title="Turn Example (Structure)" content={TURN_EXAMPLE_JSON} />
+                              </>
                             )}
                         </div>
                     </div>
