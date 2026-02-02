@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SCENARIO_SYSTEM_PROMPT, TURN_SYSTEM_PROMPT } from './system-instructions';
+import { SCENARIO_BASE_INSTRUCTIONS, TURN_BASE_INSTRUCTIONS } from './system-instructions';
 
 // Define the shape of a single AI interaction
 export interface AITransaction {
@@ -78,8 +78,8 @@ export const useAIStore = create<AIState>((set, get) => ({
   googleKey: '',
   selectedModel: 'gpt-4o',
   
-  scenarioSystemPrompt: SCENARIO_SYSTEM_PROMPT, 
-  turnSystemPrompt: TURN_SYSTEM_PROMPT, 
+  scenarioSystemPrompt: SCENARIO_BASE_INSTRUCTIONS, 
+  turnSystemPrompt: TURN_BASE_INSTRUCTIONS, 
 
   lastScenarioPrompt: null,
   lastScenarioSystemPrompt: null,
