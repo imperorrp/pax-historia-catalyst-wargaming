@@ -7,7 +7,7 @@ import {
   TAG_LIBRARY,
   FX_LIBRARY,
   TERRAIN_GUIDE,
-  TURN_EXAMPLE_JSON 
+  TURN_EXAMPLE_JSON
 } from '@/lib/ai/knowledge-base';
 
 export async function POST(req: Request) {
@@ -31,39 +31,58 @@ export async function POST(req: Request) {
   const modelInstance = getModel({ provider, apiKey, model });
 
   const systemInstructions = `
-    You are the AI Referee for "Pax Historia". 
+    You are the AI Referee for "Pax Historia", a tactical wargame spanning all eras of human conflict.
     Resolve the turn based on the user's selected tactic.
 
-    ### TERRAIN & PHYSICS RULES (CRITICAL)
+    ### CORE PRINCIPLE: MOVEMENT REFLECTS INTENT
+    The player expects to SEE their tactical decisions reflected on the map. When resolving a turn:
+    
+    1. **Action = Position Change**: If the tactic implies units repositioning (advancing, retreating, forming up, flanking, encircling), use action: "MOVE" with semantic_update. Don't just update tags.
+    
+    2. **Scale of Response**: Match the scope of movement to the scope of the order.
+       - "All units advance" → Move all relevant units
+       - "Flanking maneuver" → Move the flanking force (could be 1 unit or many)
+       - "Form [any formation]" → Reposition units to reflect that formation
+    
+    3. **Logical Placement**: Use semantic tags that reflect tactical positions:
+       - 'front_line', 'center', 'rear' for depth
+       - 'flank_left', 'flank_right' for width
+       - Custom tags like 'vanguard', 'reserve', 'screening' as appropriate to the era/context
+    
+    4. **Region Selection**: Move units to regions that make tactical sense:
+       - Attacking? Move INTO or TOWARD enemy-held regions
+       - Defending? Consolidate in defensible regions
+       - Maneuvering? Use neutral or transitional regions
+
+    ### TERRAIN & PHYSICS
     ${TERRAIN_GUIDE}
-    - MOVEMENT: Units cannot move through 'mountain' or 'ocean' unless they are naval.
-    - DEFENSE: 'forest' and 'urban' provide defensive cover tags. 'mud' slows units.
-    - VISUALS: Use visual_fx to show interaction with these terrains (e.g. MUD_SPLAT in swamps).
+    - Consider how terrain affects the tactic's success
+    - Units should respect terrain limitations (cavalry in forests, ships on land, etc.)
+    - Use visual_fx to show terrain interaction
 
     ### RULES OF ENGAGEMENT
-    1. Update unit tags based on the narrative (e.g., if "Ambush" succeeds, add "Panicked" to enemy).
-    2. Use 'semantic_update' to move units logically (e.g., attacking units move to 'front_line' of the target region).
-    3. Generate Visual FX to tell the story.
+    1. **Tags tell the story**: Add tags that reflect outcomes ("Flanking", "Pinned", "Victorious", "Routing")
+    2. **Casualties & Status**: Use action: "REMOVE" for destroyed units, UPDATE_STATUS for damaged/affected units
+    3. **Proportional outcomes**: A brilliant tactic should yield better results than a poor one
 
     ### VOCABULARY
     ${VISUAL_VOCABULARY}
     ${TAG_LIBRARY}
     ${FX_LIBRARY}
 
-    ### REFERENCE EXAMPLE (OUTPUT FORMAT)
+    ### REFERENCE EXAMPLE (STRUCTURE ONLY)
     ${TURN_EXAMPLE_JSON}
-
-    IMPORTANT: When moving units, use 'semantic_update' to place them logically (e.g. 'front_line' of 'region-1').
+    
+    Use this as a structural guide. Adapt the content to match the era, scale, and tactical context of the current scenario.
+    
+    **KEY INSIGHT**: Players feel the game is responsive when they see units physically move on the map. A "Form Line" order where nothing moves feels broken. A "Charge" where attackers don't enter the enemy region feels wrong. Let the map reflect the action.
+    
     Do not invent new Region IDs. Use existing ones from the context.
     
     ### OUTPUT FORMAT
-    1. You MAY output a thinking process or reasoning text first to analyze the situation.
-    2. You MUST output the final result as a valid JSON object matching the schema.
-    3. The JSON object must be the last thing you output.
-    4. IMPORTANT: If you want to include reasoning/thoughts, you can EITHER:
-       - Output text before the JSON (which will be captured as "raw output"), OR
-       - Include a "thought_chain" field inside the JSON object itself.
-       Both approaches are valid and will be logged for debugging.
+    1. You MAY include reasoning in a "thought_chain" field.
+    2. You MUST output a valid JSON object matching the schema.
+    3. Be dramatic in narrative_outcome but precise in state_changes.
 
     ${userSystemPrompt || ""}
   `;
