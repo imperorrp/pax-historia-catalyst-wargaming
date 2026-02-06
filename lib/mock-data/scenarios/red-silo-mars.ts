@@ -188,9 +188,9 @@ export const RED_SILO_MARS: WarRoomScenario = {
       title: "Trench Infiltration to the Silo",
       description: "Use the buried service trench to approach under cover and breach into the complex before defenders can concentrate fire through the dust.",
       compositeActions: [
-        { semanticAction: "INFILTRATE", targetLogic: "specific_region", targetRegionId: "service_trench", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Move breachers and raiders through covered trench sections, using storm noise for concealment." },
-        { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Breach into the silo yard and clear lanes between structures at close range." },
-        { semanticAction: "FORTIFY", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: null, requiredUnitTypes: [], description: "Secure access points and lock down the comms mast and processing controls." }
+        { semanticAction: "INFILTRATE", targetLogic: "specific_region", targetRegionId: "service_trench", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Move breachers and raiders through covered trench sections, using storm noise for concealment." },                                               
+        { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Breach into the silo yard and clear lanes between structures at close range." },
+        { semanticAction: "FORTIFY", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: undefined, requiredUnitTypes: [], description: "Secure access points and lock down the comms mast and processing controls." }
       ],
       visualEffects: ["dust", "smoke"]
     },
@@ -199,9 +199,9 @@ export const RED_SILO_MARS: WarRoomScenario = {
       title: "Culvert Spearhead (High Risk, Fast Capture)",
       description: "Drive the rovers hard across the culvert bridge to crack the perimeter quickly, accepting that the crossing is a predictable kill zone.",
       compositeActions: [
-        { semanticAction: "SPEARHEAD", targetLogic: "specific_region", targetRegionId: "culvert_bridge", targetUnitId: null, requiredUnitTypes: ["armor"], description: "Punch across the narrow crossing before ridge fire can fully range in." },
-        { semanticAction: "SUPPRESS", targetLogic: "specific_unit", targetRegionId: null, targetUnitId: "e2_ridge_watch", requiredUnitTypes: ["artillery", "infantry"], description: "Lay suppressive fire into ridge positions to reduce accurate shots during the crossing." },
-        { semanticAction: "COMBINED_ASSAULT", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: null, requiredUnitTypes: ["armor", "infantry"], description: "Armor pins the yard while infantry clears buildings and disables turret control nodes." }
+        { semanticAction: "SPEARHEAD", targetLogic: "specific_region", targetRegionId: "culvert_bridge", targetUnitId: undefined, requiredUnitTypes: ["armor"], description: "Punch across the narrow crossing before ridge fire can fully range in." },
+        { semanticAction: "SUPPRESS", targetLogic: "specific_unit", targetRegionId: undefined, targetUnitId: "e2_ridge_watch", requiredUnitTypes: ["artillery", "infantry"], description: "Lay suppressive fire into ridge positions to reduce accurate shots during the crossing." },
+        { semanticAction: "COMBINED_ASSAULT", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: undefined, requiredUnitTypes: ["armor", "infantry"], description: "Armor pins the yard while infantry clears buildings and disables turret control nodes." }
       ],
       visualEffects: ["dust", "explosions"]
     },
@@ -210,9 +210,9 @@ export const RED_SILO_MARS: WarRoomScenario = {
       title: "Western Dunes Flank Under Storm Cover",
       description: "Exploit the dust drifts to mask a wide left hook. Slower for vehicles, but strong for infantry to emerge close to the silo perimeter.",
       compositeActions: [
-        { semanticAction: "FLANK_LEFT", targetLogic: "specific_region", targetRegionId: "dust_dunes_west", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Move light infantry along the dunes to avoid ridge sightlines." },
-        { semanticAction: "AMBUSH", targetLogic: "specific_region", targetRegionId: "dust_dunes_west", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Set an ambush for the enemy quick-reaction rover if it redeploys away from the culvert." },
-        { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Hit the western service doors and pipe-rack lanes, forcing the garrison to split." }
+        { semanticAction: "FLANK_LEFT", targetLogic: "specific_region", targetRegionId: "dust_dunes_west", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Move light infantry along the dunes to avoid ridge sightlines." },
+        { semanticAction: "AMBUSH", targetLogic: "specific_region", targetRegionId: "dust_dunes_west", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Set an ambush for the enemy quick-reaction rover if it redeploys away from the culvert." },
+        { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Hit the western service doors and pipe-rack lanes, forcing the garrison to split." }
       ],
       visualEffects: ["dust"]
     },
@@ -221,9 +221,9 @@ export const RED_SILO_MARS: WarRoomScenario = {
       title: "Pressure the Ridge to Break Overwatch",
       description: "Reduce the defenders' high-ground advantage by bombarding and then pushing a climbing assault up the escarpment ramps.",
       compositeActions: [
-        { semanticAction: "BOMBARD", targetLogic: "specific_region", targetRegionId: "chryse_ridge", targetUnitId: null, requiredUnitTypes: ["artillery"], description: "Micromortar fire onto ridge fighting positions—imprecise in the storm, but disruptive." },
-        { semanticAction: "ADVANCE", targetLogic: "specific_region", targetRegionId: "antenna_knoll", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Occupy the knoll as a stepping-stone and deny marksmen overwatch." },
-        { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "chryse_ridge", targetUnitId: null, requiredUnitTypes: ["infantry"], description: "Close assault up the ramps/gullies to force ridge defenders into close combat where visibility matters less." }
+        { semanticAction: "BOMBARD", targetLogic: "specific_region", targetRegionId: "chryse_ridge", targetUnitId: undefined, requiredUnitTypes: ["artillery"], description: "Micromortar fire onto ridge fighting positions—imprecise in the storm, but disruptive." },
+        { semanticAction: "ADVANCE", targetLogic: "specific_region", targetRegionId: "antenna_knoll", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Occupy the knoll as a stepping-stone and deny marksmen overwatch." },
+        { semanticAction: "ASSAULT", targetLogic: "specific_region", targetRegionId: "chryse_ridge", targetUnitId: undefined, requiredUnitTypes: ["infantry"], description: "Close assault up the ramps/gullies to force ridge defenders into close combat where visibility matters less." }
       ],
       visualEffects: ["explosions", "smoke", "dust"]
     },
@@ -232,9 +232,9 @@ export const RED_SILO_MARS: WarRoomScenario = {
       title: "Sever the Quick-Reaction Route",
       description: "Prevent the enemy rover troop from reinforcing the silo by fixing it at the culvert and cutting its movement corridor along the gully.",
       compositeActions: [
-        { semanticAction: "SEVER_SUPPLY", targetLogic: "specific_region", targetRegionId: "culvert_bridge", targetUnitId: null, requiredUnitTypes: [], description: "Disable the culvert approach with obstacles and targeted fire, making reinforcement slow and costly." },
-        { semanticAction: "SUPPRESS", targetLogic: "specific_unit", targetRegionId: null, targetUnitId: "e4_quick_reaction_rover", requiredUnitTypes: ["artillery"], description: "Keep the rover troop pinned while infantry closes in from covered routes." },
-        { semanticAction: "ENCIRCLE", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: null, requiredUnitTypes: ["infantry", "armor"], description: "Once QRF is contained, wrap the silo perimeter to force a garrison surrender or breakthrough attempt." }
+        { semanticAction: "SEVER_SUPPLY", targetLogic: "specific_region", targetRegionId: "culvert_bridge", targetUnitId: undefined, requiredUnitTypes: [], description: "Disable the culvert approach with obstacles and targeted fire, making reinforcement slow and costly." },
+        { semanticAction: "SUPPRESS", targetLogic: "specific_unit", targetRegionId: undefined, targetUnitId: "e4_quick_reaction_rover", requiredUnitTypes: ["artillery"], description: "Keep the rover troop pinned while infantry closes in from covered routes." },
+        { semanticAction: "ENCIRCLE", targetLogic: "specific_region", targetRegionId: "silo_complex", targetUnitId: undefined, requiredUnitTypes: ["infantry", "armor"], description: "Once QRF is contained, wrap the silo perimeter to force a garrison surrender or breakthrough attempt." }
       ],
       visualEffects: ["dust", "smoke"]
     }

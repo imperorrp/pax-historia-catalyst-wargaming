@@ -234,7 +234,8 @@ export interface WarRoomScenario {
   name: string // Added scenario name
   // NEW: Determines rendering style and generation density
   scaleType?: 'tactical' | 'grand_strategy'; 
-  era: "WW2" | "Napoleonic" | "Ancient" | "Medieval"
+  // Allow any arbitrary era string (e.g. "WW2", "Near-Future", "Classical", etc.)
+  era: string;
   playerPolity: string
   enemyPolity: string
   mapRegions: MapRegion[]
