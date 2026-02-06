@@ -72,10 +72,12 @@ export async function POST(req: Request) {
         }
 
         // OpenAI: do a single minimal generate to validate key
+        // NOTE: OpenAI Responses API enforces a minimum `max_output_tokens` (>= 16),
+        // so use 16 here to avoid validation errors while keeping the call small.
         const model = getModel({ provider: provider as 'openai' | 'google', apiKey, model: provider === 'openai' ? 'gpt-3.5-turbo' : 'gemini-2.0-flash-lite' });
-        // Lightweight call to verify key - use minimal tokens
+        // Lightweight call to verify key - use a safe minimum of 16 tokens
         const { generateText } = await import('ai');
-        await generateText({ model: model, prompt: 'Hi', maxOutputTokens: 1 });
+        await generateText({ model: model, prompt: 'Hi', maxOutputTokens: 16 });
         return new Response(JSON.stringify({ isValid: true, message: 'Key is valid' }), { status: 200 });
     } catch (e: any) {
         console.error("Validation failed:", e);

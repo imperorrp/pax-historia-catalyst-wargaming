@@ -5,6 +5,7 @@ import { HYDASPES_PAYLOADS } from "./ai-payloads/hydaspes"
 import { MEDIEVAL_SIEGE_PAYLOADS } from "./ai-payloads/medieval-siege"
 import { RED_CLIFFS_PAYLOADS } from "./ai-payloads/red-cliffs"
 import { TRAFALGAR_PAYLOADS } from "./ai-payloads/trafalgar"
+import { RED_SILO_PAYLOADS } from "./ai-payloads/red-silo-mars"
 
 export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
   ...AUSTERLITZ_PAYLOADS,
@@ -13,4 +14,5 @@ export const SAMPLE_PAYLOADS: Record<string, AIGameResponse> = {
   ...MEDIEVAL_SIEGE_PAYLOADS,
   ...RED_CLIFFS_PAYLOADS,
   ...TRAFALGAR_PAYLOADS,
+  ...RED_SILO_PAYLOADS,
 }

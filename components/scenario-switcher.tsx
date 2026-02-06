@@ -12,9 +12,15 @@ export function ScenarioSwitcher() {
     <div className="flex items-center gap-2">
       <MapPin className="w-4 h-4 text-amber-700 flex-shrink-0" />
       <div className="flex gap-2 overflow-x-auto max-w-[50vw] md:max-w-[40vw] pb-1 scrollbar-hide">
-        {availableScenarios.map((scenario) => (
+        {availableScenarios.map((scenario, idx) => {
+          const rawName = (scenario as any)?.name;
+          const label = typeof rawName === 'string' && rawName.length > 0
+            ? rawName.split(":")[0]
+            : "Untitled";
+
+          return (
           <motion.button
-            key={scenario.id}
+            key={(scenario as any)?.id ?? `${label}-${idx}`}
             onClick={() => setScenario(scenario)}
             className={`
               px-3 py-1.5 rounded-lg font-serif text-xs font-bold transition-all whitespace-nowrap
@@ -27,9 +33,10 @@ export function ScenarioSwitcher() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            {scenario.name.split(":")[0]}
+            {label}
           </motion.button>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

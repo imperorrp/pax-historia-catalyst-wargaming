@@ -192,6 +192,18 @@ export const useAIStore = create<AIState>((set, get) => ({
       return { promptTokens, completionTokens, totalTokens };
     };
 
+    // In error paths, callers often pass the raw model/server output as a string.
+    // Store that as `rawOutput` so the Debug Panel can show it in the dedicated section.
+    const rawOutput =
+      typeof rawResponse === 'string'
+        ? rawResponse
+        : (rawResponse && typeof rawResponse?.raw === 'string')
+          ? rawResponse.raw
+          : undefined;
+
+    // Preserve non-string objects for the "Raw Invalid Output" panel.
+    const normalizedRawResponse = typeof rawResponse === 'string' ? undefined : rawResponse;
+
     set(state => ({
       isLoading: false,
       history: state.history.map(entry => {
@@ -200,7 +212,8 @@ export const useAIStore = create<AIState>((set, get) => ({
           ...entry,
           status: 'error',
           error: error,
-          rawResponse: rawResponse,
+          rawResponse: normalizedRawResponse,
+          rawOutput: rawOutput,
           tokenUsage: normalizeUsage(usage),
           latency: Date.now() - entry.timestamp
         };

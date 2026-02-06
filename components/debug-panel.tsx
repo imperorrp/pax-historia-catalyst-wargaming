@@ -76,15 +76,33 @@ export function DebugPanel({ scenario, selectedTactic, onClose }: DebugPanelProp
           const data = await response.json();
           setOpenaiModels(data.openai || []);
           setGoogleModels(data.google || []);
-        } else {
-          // Fallback to hardcoded models if API fails
-          setOpenaiModels(['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o1-mini']);
+          } else {
+          // Fallback to a curated list of recent/popular OpenAI models if API fails
+          setOpenaiModels([
+            'gpt-5.2',
+            'gpt-5.2-pro',
+            'gpt-5.2-codex',
+            'gpt-5-mini',
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-4.1',
+            'gpt-3.5-turbo'
+          ]);
           setGoogleModels(['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']);
         }
-      } catch (error) {
+        } catch (error) {
         console.error('Failed to fetch models:', error);
-        // Fallback to hardcoded models
-        setOpenaiModels(['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o1-mini']);
+        // Fallback to a curated list of recent/popular OpenAI models
+        setOpenaiModels([
+          'gpt-5.2',
+          'gpt-5.2-pro',
+          'gpt-5.2-codex',
+          'gpt-5-mini',
+          'gpt-4o',
+          'gpt-4o-mini',
+          'gpt-4.1',
+          'gpt-3.5-turbo'
+        ]);
         setGoogleModels(['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']);
       } finally {
         setModelsLoading(false);
@@ -738,7 +756,7 @@ function DebugPanelContent({ scenario, selectedTactic, expandedSections, toggleS
                 {selectedTactic.targetRegionId && (
                   <InfoRow label="Target Region" value={selectedTactic.targetRegionId} />
                 )}
-                {selectedTactic.requiredUnitTypes && (
+                {Array.isArray(selectedTactic.requiredUnitTypes) && selectedTactic.requiredUnitTypes.length > 0 && (
                   <InfoRow label="Required Units" value={selectedTactic.requiredUnitTypes.join(", ")} />
                 )}
               </div>
@@ -758,7 +776,7 @@ function DebugPanelContent({ scenario, selectedTactic, expandedSections, toggleS
                         <div className="space-y-1 font-mono text-[11px] text-cyan-300">
                           {action.targetLogic && <InfoRow label="Target" value={action.targetLogic} compact />}
                           {action.targetRegionId && <InfoRow label="Region" value={action.targetRegionId} compact />}
-                          {action.requiredUnitTypes && (
+                          {Array.isArray(action.requiredUnitTypes) && action.requiredUnitTypes.length > 0 && (
                             <InfoRow label="Units" value={action.requiredUnitTypes.join(", ")} compact />
                           )}
                         </div>
@@ -885,7 +903,9 @@ function DebugPanelContent({ scenario, selectedTactic, expandedSections, toggleS
                   <InfoRow label="ID" value={option.id} compact />
                   {option.semanticAction && <InfoRow label="Action" value={option.semanticAction} compact />}
                   {option.targetRegionId && <InfoRow label="Region" value={option.targetRegionId} compact />}
-                  {option.requiredUnitTypes && <InfoRow label="Required Units" value={option.requiredUnitTypes.join(", ")} compact />}
+                  {Array.isArray(option.requiredUnitTypes) && option.requiredUnitTypes.length > 0 && (
+                    <InfoRow label="Required Units" value={option.requiredUnitTypes.join(", ")} compact />
+                  )}
                   {option.visualEffects && option.visualEffects.length > 0 && (
                     <InfoRow label="Visual FX" value={option.visualEffects.join(", ")} compact />
                   )}
@@ -901,7 +921,9 @@ function DebugPanelContent({ scenario, selectedTactic, expandedSections, toggleS
                             <div className="text-cyan-200 font-semibold">{action.semanticAction}</div>
                             {action.targetLogic && <div>Logic: {action.targetLogic}</div>}
                             {action.targetRegionId && <div>Region: {action.targetRegionId}</div>}
-                            {action.requiredUnitTypes && <div>Units: {action.requiredUnitTypes.join(", ")}</div>}
+                            {Array.isArray(action.requiredUnitTypes) && action.requiredUnitTypes.length > 0 && (
+                              <div>Units: {action.requiredUnitTypes.join(", ")}</div>
+                            )}
                             {action.description && <div className="text-cyan-300 italic">"{action.description}"</div>}
                           </div>
                         </div>

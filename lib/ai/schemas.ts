@@ -12,9 +12,9 @@ const RegionDefSchema = z.object({
 
 // Schema for modifying existing regions
 const RegionModifySchema = z.object({
-  name: z.string().optional(),
-  influence: z.number().optional(),
-  terrain: z.string().optional()
+  name: z.string().nullable().describe("New display name, or null if unchanged"),
+  influence: z.number().nullable().describe("New influence, or null if unchanged"),
+  terrain: z.string().nullable().describe("New terrain, or null if unchanged")
 });
 
 // Unit state change (existing)
@@ -24,16 +24,16 @@ const UnitStateChangeSchema = z.object({
   semantic_update: z.object({
     regionId: z.string(),
     tag: z.string()
-  }).optional(),
-  new_tags: z.array(z.string()).optional()
+  }).nullable().describe("Provide for MOVE, otherwise null"),
+  new_tags: z.array(z.string()).describe("New tags to apply; use [] if none")
 });
 
 // Region change operations (new)
 const RegionChangeSchema = z.object({
   action: z.enum(["CREATE_REGION", "REMOVE_REGION", "MODIFY_REGION"]),
-  region_id: z.string().optional().describe("Required for REMOVE_REGION and MODIFY_REGION"),
-  region_def: RegionDefSchema.optional().describe("Required for CREATE_REGION"),
-  updates: RegionModifySchema.optional().describe("Required for MODIFY_REGION")
+  region_id: z.string().nullable().describe("Region id (required for REMOVE_REGION and MODIFY_REGION; otherwise null)"),
+  region_def: RegionDefSchema.nullable().describe("Region definition (required for CREATE_REGION; otherwise null)"),
+  updates: RegionModifySchema.nullable().describe("Updates (required for MODIFY_REGION; otherwise null)")
 });
 
 // The AI generates this to build a map
@@ -73,14 +73,14 @@ const VisualActionSchema = z.object({
       "DIVERSION", "VICTORY", "DIPLOMACY", "HOLD", "FEINT", "BLOCKADE", "AIRSTRIKE", "RECON"
   ]),
   targetLogic: z.enum(["nearest", "center_mass", "flank_left", "flank_right", "flank", "rear", "specific_region", "region", "specific_unit", "self", "lowest_health", "weakest", "density", "ally_distress"]),
-  targetRegionId: z.string().optional().describe("Required if targetLogic is 'specific_region'"), 
-  targetUnitId: z.string().optional().describe("Required if targetLogic is 'specific_unit'"),
-  requiredUnitTypes: z.array(z.string()).optional(),
-  description: z.string().optional()
+  targetRegionId: z.string().nullable().describe("Region id if targetLogic is 'specific_region' or 'region'; otherwise null"),
+  targetUnitId: z.string().nullable().describe("Unit id if targetLogic is 'specific_unit'; otherwise null"),
+  requiredUnitTypes: z.array(z.string()).describe("Unit types needed for the composite action; use [] if none"),
+  description: z.string().nullable().describe("Optional human-friendly description; otherwise null")
 });
 
 export const ScenarioGenerationSchema = z.object({
-  thought_chain: z.string().optional(),
+  thought_chain: z.string().nullable().describe("Optional reasoning text; otherwise null"),
   name: z.string(),
   era: z.string(),
   narrative_intro: z.string(),
@@ -96,27 +96,27 @@ export const ScenarioGenerationSchema = z.object({
     // Force the AI to fill the compositeActions array
     compositeActions: z.array(VisualActionSchema).min(1).describe("List of visual steps. ALWAYS provide at least one action."),
     
-    visualEffects: z.array(z.string()).optional()
+    visualEffects: z.array(z.string()).describe("Optional VFX identifiers; use [] if none")
   }))
 });
 
 export const TurnResolutionSchema = z.object({
-    thought_chain: z.string().optional(),
+  thought_chain: z.string().nullable().describe("Optional reasoning text; otherwise null"),
     narrative_outcome: z.string(),
     
     // Unit state changes
     state_changes: z.array(UnitStateChangeSchema),
     
     // Region modifications (optional - for dynamic battlefield changes)
-    region_changes: z.array(RegionChangeSchema).optional().describe(
-      "Optional: Create new regions (e.g., battle lines, breaches), remove obsolete ones, or modify existing regions. Use sparingly - only when the battlefield fundamentally changes shape."
+    region_changes: z.array(RegionChangeSchema).describe(
+      "Optional: Create new regions (e.g., battle lines, breaches), remove obsolete ones, or modify existing regions. Use [] if none."
     ),
     
     visual_fx: z.array(z.object({
       type: z.enum(["MUD_SPLAT", "EXPLOSION", "SMOKE", "FIRE", "DUST", "IMPACT", "WATER_SPLASH"]),
-      region: z.string().optional(),
-      target_unit: z.string().optional()
-    })).optional(),
+      region: z.string().nullable().describe("Region id or null"),
+      target_unit: z.string().nullable().describe("Unit id or null")
+    })).describe("Visual effects to render; use [] if none"),
     next_options: z.array(z.object({
         id: z.string(),
         title: z.string(),

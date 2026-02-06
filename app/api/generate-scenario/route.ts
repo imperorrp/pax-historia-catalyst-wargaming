@@ -49,6 +49,11 @@ export async function POST(req: Request) {
       1. You MAY output a thinking process or reasoning text first.
       2. You MUST output the final result as a valid JSON object matching the schema.
       3. The JSON object must be the last thing you output.
+      4. For every item in tactical_options[].compositeActions[] you MUST include these keys:
+        - targetRegionId (string or null)
+        - targetUnitId (string or null)
+        - requiredUnitTypes (array; use [])
+        - description (string or null)
       4. IMPORTANT: If you want to include reasoning/thoughts, you can EITHER:
          - Output text before the JSON (which will be captured as "raw output"), OR
          - Include a "thought_chain" field inside the JSON object itself.
@@ -124,8 +129,35 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.log("AI Output format warning, attempting repair...", err.message);
 
+    const safeStringify = (value: unknown) => {
+      try {
+        const seen = new WeakSet<object>();
+        return JSON.stringify(
+          value,
+          (_key, val) => {
+            if (typeof val === 'object' && val !== null) {
+              if (seen.has(val as object)) return '[Circular]';
+              seen.add(val as object);
+            }
+            return val;
+          },
+          2
+        );
+      } catch {
+        return undefined;
+      }
+    };
+
     // 1. Capture Raw Output
-    const rawContent = err.text || err.value || "";
+    const rawContent =
+      err?.text ||
+      err?.value ||
+      (typeof err?.responseBody === 'string' ? err.responseBody : safeStringify(err?.responseBody)) ||
+      (typeof err?.data === 'string' ? err.data : safeStringify(err?.data)) ||
+      (typeof err?.cause?.responseBody === 'string' ? err.cause.responseBody : safeStringify(err?.cause?.responseBody)) ||
+      err?.stack ||
+      safeStringify(err) ||
+      "";
     const usage = err.usage || { totalTokens: 0, promptTokens: 0, completionTokens: 0 };
 
     // 2. Extract JSON using Regex

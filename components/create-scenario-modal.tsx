@@ -70,18 +70,31 @@ export function CreateScenarioModal({
       
       const text = await res.text();
       if (!res.ok) {
-        // Try to parse a structured error, otherwise include raw text
+        // Try to parse a structured error to capture `raw` + `usage` for telemetry.
         let errMsg = text;
-        try { errMsg = JSON.parse(text).error || text } catch { /* ignore */ }
-        throw new Error(`Generation failed (${provider}): ${errMsg}`)
+        let rawForTelemetry: any = text;
+        let usageForTelemetry: any = undefined;
+        try {
+          const parsed = JSON.parse(text);
+          errMsg = parsed?.error || text;
+          rawForTelemetry = parsed?.raw ?? text;
+          usageForTelemetry = parsed?.usage;
+        } catch {
+          // ignore
+        }
+
+        failTransaction(txId, `Generation failed (${providerToSend}): ${errMsg}`, rawForTelemetry, usageForTelemetry);
+        alert(`Failed to generate scenario.\n\nError: ${errMsg}\n\nPlease check the "System Console" > "Telemetry" tab to see the raw response.`);
+        return;
       }
       
       let data;
       try {
         data = JSON.parse(text);
       } catch (parseError) {
-         // This is often where "text before json" fails if strict mode didn't catch it
-         throw new Error("Received invalid JSON from AI. Check Telemetry for raw output.");
+         // Capture raw text so Telemetry shows it even if JSON parsing fails.
+         failTransaction(txId, "Response JSON parse error: received invalid JSON from server", text);
+         return;
       }
       
       // Optional: expose raw model output for debugging
@@ -119,7 +132,10 @@ export function CreateScenarioModal({
     } catch (e: any) {
       console.error(e)
       // 5. Log Failure
-      failTransaction(txId, e.message || String(e));
+      const tx = useAIStore.getState().history.find(h => h.id === txId);
+      if (tx?.status === 'pending') {
+        failTransaction(txId, e.message || String(e));
+      }
       // Show clearer provider-aware error message with pointer to Telemetry
       alert(`Failed to generate scenario.\n\nError: ${e?.message || String(e)}\n\nPlease check the "System Console" > "Telemetry" tab to see the raw response from the AI.`)
     } finally {

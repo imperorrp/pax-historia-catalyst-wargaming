@@ -70,7 +70,7 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
             : [{ semanticAction: tactic.semanticAction, targetLogic: tactic.targetLogic, targetRegionId: tactic.targetRegionId, requiredUnitTypes: tactic.requiredUnitTypes }]
 
           actionsToRender.forEach((action) => {
-            if (action.requiredUnitTypes && !action.requiredUnitTypes.includes(playerUnit.type)) {
+            if (Array.isArray(action.requiredUnitTypes) && action.requiredUnitTypes.length > 0 && !action.requiredUnitTypes.includes(playerUnit.type)) {
               // Not an issue—just not applicable to this unit
               return;
             }
@@ -567,8 +567,8 @@ export function WarRoomMap({ scenario }: WarRoomMapProps) {
             console.log(`[RENDER DEBUG] Processing unit ${playerUnit.id} (${playerUnit.type}) for action ${action.semanticAction}`);
             
             // Check if this unit type is relevant for the action
-            if (action.requiredUnitTypes && !action.requiredUnitTypes.includes(playerUnit.type)) {
-               console.warn(`[render] Skip action ${action.semanticAction} for unit ${playerUnit.id} due to unit type mismatch (required: ${action.requiredUnitTypes.join(',')}, unit: ${playerUnit.type})`);
+            if (Array.isArray(action.requiredUnitTypes) && action.requiredUnitTypes.length > 0 && !action.requiredUnitTypes.includes(playerUnit.type)) {
+              console.warn(`[render] Skip action ${action.semanticAction} for unit ${playerUnit.id} due to unit type mismatch (required: ${action.requiredUnitTypes.join(',')}, unit: ${playerUnit.type})`);
                return; 
             }
 

@@ -10,6 +10,7 @@ import { redCliffs } from "./scenarios/red-cliffs"
 import { hydaspes } from "./scenarios/hydaspes"
 import { trafalgar } from "./scenarios/trafalgar"
 import { grandStrategyEurope } from "./scenarios/grand-strategy-europe"
+import { RED_SILO_MARS } from "./scenarios/red-silo-mars"
 
 export const SCENARIOS: Record<string, WarRoomScenario> = {
   grand_strategy_europe: grandStrategyEurope,
@@ -19,6 +20,7 @@ export const SCENARIOS: Record<string, WarRoomScenario> = {
   three_kingdoms_red_cliffs: redCliffs,
   ancient_india_hydaspes: hydaspes,
   napoleonic_trafalgar: trafalgar,
+  mars_red_silo: RED_SILO_MARS,
 }
 
 export const MOCK_SCENARIO = SCENARIOS.ww2_blitzkrieg

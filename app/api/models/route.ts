@@ -38,9 +38,18 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching Google models:', error);
     }
 
-    // Fallbacks if lists are empty
+    // Fallbacks if lists are empty — use a curated set of recent/popular OpenAI models
     if (!openaiModels || openaiModels.length === 0) {
-      openaiModels = ['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o1-mini'];
+      openaiModels = [
+        'gpt-5.2',
+        'gpt-5.2-pro',
+        'gpt-5.2-codex',
+        'gpt-5-mini',
+        'gpt-4o',
+        'gpt-4o-mini',
+        'gpt-4.1',
+        'gpt-3.5-turbo'
+      ];
     }
     if (!googleModels || googleModels.length === 0) {
       googleModels = [
