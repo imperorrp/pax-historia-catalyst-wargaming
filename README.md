@@ -1,12 +1,12 @@
 # Pax Historia Wargaming Prototype
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://pax-historia-wargaming-proto.vercel.app/)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://wargaming-prototype.vercel.app/)
 
 ## Overview
 
 This is a prototype to test the feasibility of implementing an AI-driven visual combat resolver and wargaming feature for **Pax Historia**. It bridges the gap between text-based AI storytelling and visual strategy games by generating visual battlefield representations ("scenarios") from textual semantic descriptions.
 
-**Live Demo:** [pax-historia-wargaming-proto.vercel.app](https://pax-historia-wargaming-proto.vercel.app/)
+**Live Demo:** [https://wargaming-prototype.vercel.app/](https://wargaming-prototype.vercel.app/)
 
 ---
 
